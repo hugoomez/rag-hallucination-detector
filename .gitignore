@@ -1,0 +1,21 @@
+# Data and models
+data/raw/
+data/processed/
+/models/
+*.ckpt
+*.safetensors
+*.bin
+
+# Enviroment
+.venv/
+venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Secrets
+.env
+
+# System
+.DS_Store
+Thumbs.db

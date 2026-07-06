@@ -1,0 +1,25 @@
+# Core ML
+torch>=2.2
+transformers>=4.44
+datasets>=2.20
+accelerate>=0.33
+evaluate>=0.4
+sentencepiece>=0.2
+seqeval>=1.2
+
+# Datos y análisis
+pandas>=2.0
+numpy>=1.26
+scikit-learn>=1.4
+matplotlib>=3.8
+seaborn>=0.13
+nltk>=3.9
+
+# Notebooks
+jupyter
+ipykernel
+
+# Utilidades
+python-dotenv>=1.0
+huggingface_hub>=0.24
+tqdm
