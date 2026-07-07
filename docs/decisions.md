@@ -96,3 +96,103 @@ conversations with the AI copilot in Spanish.
 
 and other engineers.
 
+
+
+\---
+
+
+
+\## ADR-004: Long-context truncation strategy for DeBERTa-v3 input
+
+
+
+\*\*Context:\*\* EDA on RAGTruth (Phase 1) showed that 70.34% of rows exceed
+
+DeBERTa-v3's 512-token limit when concatenating context + response + special tokens.
+
+This is highly non-uniform across task types: QA 34.31% exceed, Summary 75.77%, Data2txt
+
+99.89%. Naive truncation also disproportionately harms hallucinated rows (50.52% of
+
+truncated rows are hallucinated vs. 43.08% globally), since evidence needed to verify
+
+faithfulness is lost. Responses are almost always under 512 tokens alone (mean 160), so
+
+the response should never be the one truncated.
+
+
+
+Extended research (see `docs/research/long-context-truncation.md` or equivalent)
+
+surveyed the RAGTruth leaderboard (Luna, LettuceDetect, RAGTruth/RAG-HAT baselines),
+
+truncation techniques (Sun et al. 2019 head/tail/head+tail), long-context encoders
+
+(ModernBERT, Longformer, BigBird), and claim-decomposition + retrieval approaches
+
+(AlignScore, MiniCheck, RefChecker).
+
+
+
+\*\*Decision:\*\* Phased approach across three stages:
+
+
+
+1\. \*\*MVP (now):\*\* Keep DeBERTa-v3-base (per ADR-001). Truncate the CONTEXT only, always
+
+&#x20; preserving the full response + question. Train/evaluate separately by `task_type` (QA /
+
+&#x20; Summary / Data2txt) to quantify the real cost of truncation per task before solving it
+
+&#x20; further. This is the honest baseline against which later gains are measured.
+
+2\. \*\*Approach 1 (next):\*\* Reproduce the LettuceDetect recipe by switching the backbone
+
+&#x20; to ModernBERT-base (149M params, native 8,192-token context, fits the free Colab T4 with
+
+&#x20; `attn_implementation="sdpa"` since FlashAttention 2 is unsupported on Turing GPUs).
+
+&#x20; Token-classification head, ~4,096-token inputs, non-response tokens masked with -100.
+
+&#x20; This eliminates ~99% of the truncation problem with comparatively low engineering
+
+&#x20; effort, matching current encoder SOTA on RAGTruth (~76-79% F1).
+
+3\. \*\*Approach 3 (advanced/capstone):\*\* Claim/sentence decomposition + retrieval + NLI,
+
+&#x20; AlignScore/MiniCheck-style: split the response into sentences, retrieve top-k relevant
+
+&#x20; context chunks per sentence with a small bi-encoder, run the fine-tuned DeBERTa-v3 NLI
+
+&#x20; check per (chunk, sentence) pair, aggregate (max-entailment per sentence). Sidesteps the
+
+&#x20; token limit entirely by design and is the most system-design-mature of the three
+
+&#x20; approaches considered — the intended flagship deliverable of the project.
+
+
+
+\*\*Alternatives considered:\*\*
+
+
+
+\- Sliding-window DeBERTa-v3 (Luna-style, per-window label propagation + max-support
+
+&#x20; aggregation): valid and demonstrates deep mastery of the ADR-001 constraint, but higher
+
+&#x20; implementation complexity than Approach 1 for comparable gains. Deprioritized in favor
+
+&#x20; of Approach 1 → Approach 3, revisited only if Approach 1's results are unsatisfactory.
+
+\- Head+tail truncation (Sun et al. 2019): rejected as a long-term fix — its motivating
+
+&#x20; assumption (salient info clusters at document start/end) does not hold for RAGTruth's
+
+&#x20; Data2txt (structured data) or Summary (evidence scattered throughout).
+
+
+
+\*\*Status:\*\* MVP in progress. Approach 1 planned as next milestone. Approach 3
+
+planned as capstone/advanced deliverable.
+
