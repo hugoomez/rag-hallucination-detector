@@ -196,3 +196,38 @@ truncation techniques (Sun et al. 2019 head/tail/head+tail), long-context encode
 
 planned as capstone/advanced deliverable.
 
+---
+
+## ADR-005: Group-stratified train/val split by source_id
+
+**Context:** RAGTruth has exactly 6 responses per source_id (one per generating
+model). A naive row-level stratified split for the train/val carve-out risks
+placing sibling responses of the same source_id in both train and val, which
+would fail the no-leakage requirement even though each row is nominally
+"different data."
+
+**Decision:** Group rows by source_id first, then stratify on each group's
+majority label_response, assigning whole groups to train or val. This makes
+the no-leakage guarantee structural (by construction) rather than something
+only caught by a post-hoc assertion.
+
+**Status:** Implemented in `src/data/preprocess.py`.
+
+---
+
+## ADR-006: Excluding the response-token-overflow outlier
+
+**Context:** One row (source_id 11845, task_type Summary) has a response that
+alone tokenizes to 770 tokens — exceeding the 512-token budget even with zero
+context tokens reserved. This breaks the ADR-004 guarantee that the response
+is never truncated.
+
+**Decision:** Drop this row from the dataset entirely (from whichever split it
+falls into) rather than breaking the "never truncate response" rule for this
+one case. A permanent assertion (`len(input_ids) <= max_length`) was also
+added as a safety net in case similar rows appear in future data.
+
+**Status:** Implemented in `src/data/preprocess.py`. 1 row dropped (from train,
+which affected val after the split, since the group-stratified split had
+assigned that source_id's group to val).
+
