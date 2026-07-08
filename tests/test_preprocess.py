@@ -21,7 +21,5 @@ def test_truncate_and_tokenize_preserves_short_response_with_long_context():
     input_ids = result["input_ids"]
     n = len(response_ids)
 
-    response_preserved_intact = any(
-        input_ids[i : i + n] == response_ids for i in range(len(input_ids) - n + 1)
-    )
+    response_preserved_intact = any(input_ids[i : i + n] == response_ids for i in range(len(input_ids) - n + 1))
     assert response_preserved_intact, "full response tokens were not preserved intact in the output"
