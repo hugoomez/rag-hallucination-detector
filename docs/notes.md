@@ -129,3 +129,20 @@ A code review caught two silent-failure risks worth remembering as patterns:
   catch unmatched keys producing NaN rows that survive silently until a much
   later, harder-to-trace error. Check both directions explicitly.
 
+## Phase 2 — NLI baseline: independent max-entailment and max-contradiction tracking
+
+When aggregating NLI scores across multiple context sentences for a single response
+sentence, it's tempting to just keep the (entailment, neutral, contradiction) triple
+from whichever context sentence had the highest entailment. This is wrong: since NLI
+outputs are a 3-way softmax (always summing to 1) computed independently per context
+sentence, the sentence with the highest entailment will almost always have a low
+contradiction score by construction — but a DIFFERENT context sentence entirely may be
+the one that actually contradicts the claim. Softmax constraints apply within one
+comparison, not across different comparisons.
+
+Fix: track max entailment and max contradiction independently, potentially from two
+different context sentences. The resulting (entailment, contradiction) pair is no
+longer a valid probability distribution (won't sum to 1 with the implied neutral) —
+it's two independent signals, not one sentence's full output — but this is necessary
+and correct for the aggregation to actually catch contradictions.
+
