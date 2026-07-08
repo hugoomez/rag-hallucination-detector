@@ -231,3 +231,32 @@ added as a safety net in case similar rows appear in future data.
 which affected val after the split, since the group-stratified split had
 assigned that source_id's group to val).
 
+---
+
+## ADR-007: Independent max-entailment/max-contradiction aggregation in the NLI baseline
+
+**Context:** When scoring a response sentence against multiple context sentences,
+each comparison produces a softmax triple (entailment, neutral, contradiction)
+that sums to 1. Naively keeping the full triple from whichever context sentence
+had the highest entailment score would almost always fail to detect real
+contradictions: a sentence with high entailment structurally tends to have low
+contradiction (softmax constraint), while the actual contradicting evidence is
+typically a DIFFERENT context sentence entirely.
+
+**Decision:** Track max entailment and max contradiction independently across
+context sentences (potentially from two different sentences), rather than
+taking one sentence's full triple. Flag priority: contradicted -> supported ->
+unverifiable. The resulting (entailment, contradiction) pair does not sum to 1
+with an implied neutral value — it represents two independent signals, not one
+sentence's complete output — but this is necessary for the aggregation to
+actually surface contradictions found anywhere in the context.
+
+**Alternatives considered:** Using only the best-entailment sentence's full
+triple (simpler, matches a naive reading of AlignScore/MiniCheck's "take the
+max" approach) — rejected because it would systematically under-detect
+contradictions due to the softmax constraint described above.
+
+**Status:** Implemented in src/models/nli_baseline.py, verified via a real-model
+smoke test (contradicting date claim correctly flagged despite low entailment
+from the best-supporting context sentence).
+
