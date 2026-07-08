@@ -294,3 +294,35 @@ which now takes pre-chunked `context_chunks`. Verified on real RAGTruth rows: Su
 28 prose chunks, QA passage-level chunks (question excluded), Data2txt 50 field/prose
 chunks with zero JSON-syntax leaks.
 
+---
+
+## ADR-009: Zero-shot NLI baseline's aggregation-independent failure mode
+
+**Context:** The zero-shot NLI baseline (F1=0.523 on test) barely outperformed the
+"always hallucinated" trivial baseline (F1=0.518). A diagnostic on cached val scores
+(scripts/diagnose_baseline_flagging.py) found the root cause is NOT the aggregation
+rule ("any sentence not-supported -> hallucinated"), but poor calibration of the raw
+per-sentence NLI scores themselves:
+- Among genuinely faithful (label_response=0) sentences, the contradicted flag fires
+  on 55.7% of them, nearly identical to the 53.8% rate among hallucinated sentences
+  — meaning contradiction carries almost no discriminative signal.
+- Median max_entailment for faithful sentences is only 0.169 (25th percentile: 0.030)
+  — most truly-supported claims score low on entailment against any single context
+  chunk, likely because faithful responses often synthesize information across
+  multiple chunks, which no single-chunk comparison can fully capture.
+- Switching from "any not-supported" to a proportion-based rule (e.g., "hallucinated
+  if >75% of sentences are not-supported") only improved F1 marginally (0.611 to
+  0.632 on val), confirming the problem is in the underlying scores, not how they're
+  aggregated.
+
+**Decision:** Report this baseline's result along with this diagnosed failure mode
+in the Phase 2 README section, rather than tuning the aggregation rule further to
+cosmetically improve the number. This finding is treated as empirical justification
+for proceeding with the fine-tuned approaches (ADR-004's Approach 1/3): a model
+fine-tuned on RAGTruth should learn domain-appropriate support/contradiction
+calibration that a generic zero-shot NLI model checking isolated sentence-chunk
+pairs cannot achieve.
+
+**Status:** Documented. scripts/diagnose_baseline_flagging.py kept in the repo as
+a reusable diagnostic for future baseline/model comparisons.
+
