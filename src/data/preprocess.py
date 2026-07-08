@@ -102,9 +102,9 @@ def truncate_and_tokenize(context: str, response: str, tokenizer, max_length: in
 
     # Safety net per ADR-006: filter_oversized_responses should already guarantee this,
     # but assert the actual invariant we care about rather than trust the intermediate budget math.
-    assert len(encoding["input_ids"]) <= max_length, (
-        f"Token budget violated: got {len(encoding['input_ids'])} tokens (max {max_length})"
-    )
+    assert (
+        len(encoding["input_ids"]) <= max_length
+    ), f"Token budget violated: got {len(encoding['input_ids'])} tokens (max {max_length})"
 
     return {
         "input_ids": encoding["input_ids"],
