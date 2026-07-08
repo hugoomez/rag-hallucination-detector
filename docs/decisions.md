@@ -260,3 +260,37 @@ contradictions due to the softmax constraint described above.
 smoke test (contradicting date claim correctly flagged despite low entailment
 from the best-supporting context sentence).
 
+## ADR-008: Task-type-aware context chunking for the NLI baseline
+
+**Context:** A diagnostic on 5 rows per task_type revealed that generic nltk
+sentence-tokenization of the normalized "context" string is only valid for Summary
+(real prose, ~28 clean sentences). For QA, the "Question: ... Passages: ..." format
+produces a single undecomposed unit (no real chunking benefit). For Data2txt, nltk
+splits raw JSON syntax as if it were prose, producing semantically meaningless
+premise fragments (e.g., a chunk of "{\"name\": \"...").
+
+**Decision:** Chunk context based on task_type, operating on the RAW source_info
+structure (before Phase 1's flattening into a single string), not on the flattened
+string itself:
+- Summary: nltk.sent_tokenize on the raw text (unchanged, already correct).
+- QA: split into individual retrieved passages first (preserving the original
+  passage boundaries from source_info), then sentence-tokenize within each passage.
+- Data2txt: chunk by structured field (one chunk per scalar key-value pair);
+  for list-valued fields containing natural-language text (e.g., reviews),
+  sentence-tokenize each entry individually rather than JSON-dumping the whole dict.
+
+Implementation note: real Data2txt rows also contain nested dicts (`hours`,
+`attributes`, incl. the `BusinessParking: null` evidence) and lists of dicts
+(`review_info`), which the summary above doesn't call out. The implementation recurses
+into nested dicts (each leaf scalar becomes a `"{key}: {value}"` chunk) and, for
+list-of-dict entries, sentence-tokenizes string fields (e.g. `review_text`) while
+emitting `"{key}: {value}"` for numeric fields. Values render JSON-style
+(`null`/`true`/`false`); no branch ever serializes a container, so JSON syntax never
+leaks into a chunk.
+
+**Status:** Implemented in `src/data/context_chunking.py`
+(`chunk_context(task_type, source_info)`), decoupled from `NLIHallucinationDetector`,
+which now takes pre-chunked `context_chunks`. Verified on real RAGTruth rows: Summary
+28 prose chunks, QA passage-level chunks (question excluded), Data2txt 50 field/prose
+chunks with zero JSON-syntax leaks.
+

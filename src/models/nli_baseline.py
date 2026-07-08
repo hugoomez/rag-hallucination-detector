@@ -15,9 +15,10 @@ hallucinated if any of its sentences is not "supported".
 
 from dataclasses import dataclass
 
-import nltk
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
+
+from src.data.context_chunking import split_sentences
 
 DEFAULT_MODEL = "MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli"
 MAX_LENGTH = 512
@@ -53,25 +54,6 @@ class DetectionResult:
     verdicts: list[SentenceVerdict]
 
 
-def _ensure_punkt() -> None:
-    """Make sure an nltk sentence tokenizer model is available, downloading if needed."""
-    for resource in ("punkt_tab", "punkt"):
-        try:
-            nltk.data.find(f"tokenizers/{resource}")
-            return
-        except LookupError:
-            if nltk.download(resource, quiet=True):
-                return
-
-
-def split_sentences(text: str) -> list[str]:
-    """Split text into sentences with nltk; returns [] for blank/whitespace input."""
-    if not text or not text.strip():
-        return []
-    _ensure_punkt()
-    return nltk.sent_tokenize(text)
-
-
 def flag_from_scores(entailment: float, contradiction: float, ent_thr: float, con_thr: float) -> str:
     """Map aggregated entailment/contradiction scores to a support flag.
 
@@ -85,6 +67,23 @@ def flag_from_scores(entailment: float, contradiction: float, ent_thr: float, co
     if entailment >= ent_thr:
         return "supported"
     return "unverifiable"
+
+
+def apply_thresholds(all_scores: list[list[tuple[float, float]]], ent_thr: float, con_thr: float) -> list[bool]:
+    """Turn precomputed raw scores into response_hallucinated flags at given thresholds.
+
+    ``all_scores`` is a list of per-response score-lists, each element being the
+    ``[(max_entailment, max_contradiction), ...]`` returned by
+    ``NLIHallucinationDetector.score_response``. Returns one ``response_hallucinated``
+    bool per response: True if any sentence is not "supported" (empty score-list -> False,
+    matching the vacuously-not-hallucinated convention).
+
+    This is the cheap, model-free half of evaluation: run the NLI model once to get
+    ``all_scores``, then call this repeatedly while sweeping thresholds.
+    """
+    return [
+        any(flag_from_scores(ent, con, ent_thr, con_thr) != "supported" for ent, con in scores) for scores in all_scores
+    ]
 
 
 class NLIHallucinationDetector:
@@ -140,46 +139,71 @@ class NLIHallucinationDetector:
             for row in probs
         ]
 
-    def _verify_sentence(
-        self,
-        response_sentence: str,
-        context_sentences: list[str],
-        ent_thr: float,
-        con_thr: float,
-    ) -> SentenceVerdict:
-        """Score one response sentence against every context sentence and aggregate."""
-        if not context_sentences:
-            # No evidence to check against: nothing supports or contradicts it.
-            return SentenceVerdict(response_sentence, 0.0, 0.0, 0.0, "unverifiable")
+    def _aggregate_sentence(self, response_sentence: str, context_chunks: list[str]) -> tuple[float, float, float]:
+        """Aggregate NLI scores for one response sentence over all context chunks.
 
-        scores = self._score_pairs(context_sentences, [response_sentence] * len(context_sentences))
+        Returns ``(max_entailment, neutral, max_contradiction)``. Entailment and
+        contradiction are maxed independently across context chunks (ADR-007), so the two
+        maxima may come from different chunks; ``neutral`` is taken from the best-entailment
+        chunk and is informational only. Empty context returns ``(0.0, 0.0, 0.0)`` (nothing
+        supports or contradicts the sentence).
+
+        This is the single, threshold-free NLI core shared by ``score_response`` and
+        ``detect``, so the model runs exactly once per response sentence regardless of how
+        many threshold settings are later applied.
+        """
+        if not context_chunks:
+            return (0.0, 0.0, 0.0)
+
+        scores = self._score_pairs(context_chunks, [response_sentence] * len(context_chunks))
 
         best_ent_idx = max(range(len(scores)), key=lambda i: scores[i][0])
         max_entailment = scores[best_ent_idx][0]
         neutral = scores[best_ent_idx][1]
         max_contradiction = max(contra for _, _, contra in scores)
+        return (max_entailment, neutral, max_contradiction)
 
-        flag = flag_from_scores(max_entailment, max_contradiction, ent_thr, con_thr)
-        return SentenceVerdict(response_sentence, max_entailment, neutral, max_contradiction, flag)
+    def score_response(self, context_chunks: list[str], response: str) -> list[tuple[float, float]]:
+        """Return raw aggregated ``(max_entailment, max_contradiction)`` per response sentence.
+
+        ``context_chunks`` is the pre-chunked context (from ``chunk_context``); chunking is
+        the caller's responsibility since the right strategy is task-type-dependent (ADR-008).
+        These are the threshold-free scores, before any flag decision. Compute them once per
+        (context, response) pair and reuse them across many threshold settings via
+        ``apply_thresholds`` instead of re-running the NLI model for every threshold — the
+        expensive model work happens here, threshold tuning is then model-free.
+        """
+        response_sentences = split_sentences(response)
+        return [
+            (entailment, contradiction)
+            for entailment, _neutral, contradiction in (
+                self._aggregate_sentence(sentence, context_chunks) for sentence in response_sentences
+            )
+        ]
 
     def detect(
         self,
-        context: str,
+        context_chunks: list[str],
         response: str,
         ent_thr: float = DEFAULT_ENT_THR,
         con_thr: float = DEFAULT_CON_THR,
     ) -> DetectionResult:
-        """Verify each response sentence against the context and aggregate a response flag.
+        """Verify each response sentence against the context chunks and aggregate a flag.
 
-        A response counts as hallucinated if any of its sentences is not "supported".
-        An empty response (no sentences) is vacuously not hallucinated.
+        ``context_chunks`` is the pre-chunked context (from ``chunk_context``). Reuses the
+        same NLI aggregation as ``score_response`` (computed once per sentence), then applies
+        ``flag_from_scores`` with the given thresholds. A response counts as hallucinated if
+        any of its sentences is not "supported"; an empty response (no sentences) is vacuously
+        not hallucinated.
         """
-        context_sentences = split_sentences(context)
         response_sentences = split_sentences(response)
 
-        verdicts = [
-            self._verify_sentence(sentence, context_sentences, ent_thr, con_thr) for sentence in response_sentences
-        ]
+        verdicts = []
+        for sentence in response_sentences:
+            entailment, neutral, contradiction = self._aggregate_sentence(sentence, context_chunks)
+            flag = flag_from_scores(entailment, contradiction, ent_thr, con_thr)
+            verdicts.append(SentenceVerdict(sentence, entailment, neutral, contradiction, flag))
+
         response_hallucinated = any(verdict.flag != "supported" for verdict in verdicts)
         return DetectionResult(response_hallucinated, verdicts)
 

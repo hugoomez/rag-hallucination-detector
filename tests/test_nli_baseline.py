@@ -13,6 +13,7 @@ from src.models.nli_baseline import (
     DetectionResult,
     NLIHallucinationDetector,
     SentenceVerdict,
+    apply_thresholds,
     flag_from_scores,
     response_color,
 )
@@ -145,7 +146,7 @@ def test_tokenizer_called_with_max_length_512_and_truncation():
 # --- 4. Max aggregation across context sentences --------------------------------------
 
 
-def test_verify_sentence_takes_max_entailment_and_max_contradiction_independently():
+def test_aggregate_sentence_takes_max_entailment_and_max_contradiction_independently():
     # Two context sentences: one strongly entails, a different one strongly contradicts.
     detector = _build_detector(
         logits_by_premise={
@@ -154,17 +155,32 @@ def test_verify_sentence_takes_max_entailment_and_max_contradiction_independentl
         }
     )
 
-    verdict = detector._verify_sentence("resp", ["ent_ctx", "con_ctx"], ent_thr=0.5, con_thr=0.5)
+    entailment, _neutral, contradiction = detector._aggregate_sentence("resp", ["ent_ctx", "con_ctx"])
 
-    assert verdict.entailment > 0.99  # max entailment came from ent_ctx
-    assert verdict.contradiction > 0.99  # max contradiction came from con_ctx
-    assert verdict.flag == "contradicted"  # per ADR-007, contradiction wins over support
+    assert entailment > 0.99  # max entailment came from ent_ctx
+    assert contradiction > 0.99  # max contradiction came from con_ctx (a different sentence)
 
 
-def test_verify_sentence_with_no_context_is_unverifiable():
+def test_detect_flags_contradicted_when_support_and_contradiction_coexist(monkeypatch):
+    # Exercised through public detect(): one context chunk entails, another contradicts;
+    # contradiction wins (ADR-007). Context chunks are passed in directly (ADR-008).
+    monkeypatch.setattr(nli_baseline, "split_sentences", lambda text: [text] if text and text.strip() else [])
+    detector = _build_detector(
+        logits_by_premise={
+            "ent_ctx": [10.0, 0.0, 0.0],  # ~1.0 entailment
+            "con_ctx": [0.0, 0.0, 10.0],  # ~1.0 contradiction
+        }
+    )
+    result = detector.detect(["ent_ctx", "con_ctx"], "resp")
+    assert result.verdicts[0].entailment > 0.99
+    assert result.verdicts[0].contradiction > 0.99
+    assert result.verdicts[0].flag == "contradicted"
+    assert result.response_hallucinated is True
+
+
+def test_aggregate_sentence_with_no_context_returns_zeros():
     detector = _build_detector()
-    verdict = detector._verify_sentence("resp", [], ent_thr=0.5, con_thr=0.5)
-    assert verdict == SentenceVerdict("resp", 0.0, 0.0, 0.0, "unverifiable")
+    assert detector._aggregate_sentence("resp", []) == (0.0, 0.0, 0.0)
 
 
 # --- 5. Response-level aggregation ----------------------------------------------------
@@ -182,30 +198,27 @@ def one_sentence_per_string(monkeypatch):
 
 def test_response_hallucinated_if_any_sentence_unsupported(monkeypatch, one_sentence_per_string):
     detector = _build_detector()
-    # supported for "good", unverifiable for "bad".
-    verdicts = {
-        "good": SentenceVerdict("good", 0.9, 0.05, 0.05, "supported"),
-        "bad": SentenceVerdict("bad", 0.1, 0.8, 0.1, "unverifiable"),
+    # Canned (entailment, neutral, contradiction) per response sentence:
+    # "good" -> supported, "bad" -> unverifiable (neither threshold met).
+    scores = {
+        "good": (0.9, 0.05, 0.05),
+        "bad": (0.1, 0.8, 0.1),
     }
-    monkeypatch.setattr(
-        detector,
-        "_verify_sentence",
-        lambda sentence, ctx, ent_thr, con_thr: verdicts[sentence],
-    )
+    monkeypatch.setattr(detector, "_aggregate_sentence", lambda sentence, ctx: scores[sentence])
 
-    result = detector.detect("ctx", "good")
+    result = detector.detect(["ctx"], "good")
     assert result.response_hallucinated is False
 
-    # detect() splits on sentences; feed both as separate one-sentence calls.
+    # detect() splits the response on sentences; feed both as separate one-sentence calls.
     monkeypatch.setattr(nli_baseline, "split_sentences", lambda text: text.split("|") if text else [])
-    result = detector.detect("ctx", "good|bad")
+    result = detector.detect(["ctx"], "good|bad")
     assert result.response_hallucinated is True
     assert [v.flag for v in result.verdicts] == ["supported", "unverifiable"]
 
 
 def test_empty_response_is_not_hallucinated(one_sentence_per_string):
     detector = _build_detector()
-    result = detector.detect("some context", "")
+    result = detector.detect(["some context"], "")
     assert result.response_hallucinated is False
     assert result.verdicts == []
 
@@ -235,3 +248,38 @@ def test_response_color_green_when_all_supported():
 def test_response_color_green_when_no_verdicts():
     result = DetectionResult(False, [])
     assert response_color(result) == "🟢"
+
+
+# --- 7. score_response / apply_thresholds (reusable raw scores) ------------------------
+
+
+def test_score_response_returns_raw_ent_con_per_sentence_dropping_neutral(monkeypatch):
+    # Split on "|"; canned aggregation per response sentence to isolate the projection.
+    monkeypatch.setattr(nli_baseline, "split_sentences", lambda text: text.split("|") if text else [])
+    detector = _build_detector()
+    triples = {"a": (0.8, 0.1, 0.2), "b": (0.3, 0.5, 0.7)}
+    monkeypatch.setattr(detector, "_aggregate_sentence", lambda sentence, ctx: triples[sentence])
+
+    scores = detector.score_response(["some context chunk"], "a|b")
+
+    # (max_entailment, max_contradiction) per sentence, in order, neutral dropped.
+    assert scores == [(0.8, 0.2), (0.3, 0.7)]
+
+
+def test_apply_thresholds_flags_rows_model_free():
+    all_scores = [
+        [(0.9, 0.1)],  # supported -> not hallucinated
+        [(0.1, 0.8)],  # contradicted -> hallucinated
+        [(0.9, 0.1), (0.2, 0.2)],  # one supported, one unverifiable -> hallucinated
+        [],  # no sentences -> not hallucinated
+    ]
+
+    result = apply_thresholds(all_scores, ent_thr=0.5, con_thr=0.5)
+
+    assert result == [False, True, True, False]
+
+
+def test_apply_thresholds_is_threshold_sensitive():
+    all_scores = [[(0.6, 0.1)]]  # entailment 0.6
+    assert apply_thresholds(all_scores, ent_thr=0.5, con_thr=0.5) == [False]  # supported
+    assert apply_thresholds(all_scores, ent_thr=0.7, con_thr=0.5) == [True]  # now unverifiable
