@@ -57,3 +57,37 @@ Total: 17,789 rows (17,790 official responses minus the 1 dropped outlier).
 `python src/data/preprocess.py` once `python src/data/download.py` has fetched
 the raw RAGTruth data).
 
+## Results (RAGTruth test set, response-level)
+
+| Approach | Precision | Recall | F1 |
+|---|---|---|---|
+| Always "hallucinated" (trivial) | 0.349 | 1.000 | 0.518 |
+| Random | 0.350 | 0.497 | 0.411 |
+| **NLI zero-shot (DeBERTa-v3-base, MoritzLaurer checkpoint)** | 0.355 | 0.998 | 0.523 |
+| Fine-tuned (Phase 3) | *pending* | | |
+
+**Per task_type (test set):**
+
+| task_type | Precision | Recall | F1 |
+|---|---|---|---|
+| Summary | 0.227 | 1.000 | 0.370 |
+| QA | 0.185 | 0.988 | 0.311 |
+| Data2txt | 0.643 | 1.000 | 0.783 |
+
+The zero-shot NLI baseline (F1 0.523) barely outperforms the trivial "always
+hallucinated" baseline (F1 0.518): with recall ≈1.0 it flags almost everything, so
+overall it is close to non-discriminative. A diagnostic on the cached scores
+(`scripts/diagnose_baseline_flagging.py`, see
+[ADR-009](docs/decisions.md)) traced this to poor calibration of the raw per-sentence
+NLI scores, *not* the aggregation rule: the "contradicted" flag fires on 55.7% of
+genuinely faithful sentences vs 53.8% of hallucinated ones (almost no signal), and
+median entailment for faithful sentences is only 0.169 — a generic NLI model checking
+isolated sentence/chunk pairs struggles when a faithful response synthesizes
+information spread across multiple context chunks. Switching to a proportion-based
+aggregation rule was tested and moved F1 only marginally (0.611 → 0.632 on val),
+ruling out aggregation as the cause. The one bright spot is **Data2txt (F1 0.783)**,
+where the task-type-aware chunking of [ADR-008](docs/decisions.md) turns structured
+fields into clean `key: value` evidence. These findings motivate the fine-tuned
+approach in Phase 3, which should learn domain-appropriate support/contradiction
+calibration the zero-shot model lacks.
+
