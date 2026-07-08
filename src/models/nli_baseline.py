@@ -182,3 +182,25 @@ class NLIHallucinationDetector:
         ]
         response_hallucinated = any(verdict.flag != "supported" for verdict in verdicts)
         return DetectionResult(response_hallucinated, verdicts)
+
+
+COLOR = {"supported": "🟢", "unverifiable": "🟡", "contradicted": "🔴"}
+
+
+def response_color(result: DetectionResult) -> str:
+    """Return the response-level traffic-light color for a DetectionResult.
+
+    Priority: any contradicted sentence -> 🔴; else any unverifiable sentence -> 🟡;
+    else 🟢. An empty verdict list (no sentences) returns 🟢, consistent with the
+    "vacuously not hallucinated" behavior in DetectionResult.
+
+    This function has no model or tensor dependencies by design: it operates purely on
+    an already-computed DetectionResult, so it can be reused as-is in the Phase 6 demo
+    UI without importing torch/transformers.
+    """
+    flags = {verdict.flag for verdict in result.verdicts}
+    if "contradicted" in flags:
+        return COLOR["contradicted"]
+    if "unverifiable" in flags:
+        return COLOR["unverifiable"]
+    return COLOR["supported"]

@@ -10,9 +10,11 @@ import torch
 
 from src.models import nli_baseline
 from src.models.nli_baseline import (
+    DetectionResult,
     NLIHallucinationDetector,
     SentenceVerdict,
     flag_from_scores,
+    response_color,
 )
 
 # Standard checkpoint label order, kept separate so tests can deliberately shuffle it.
@@ -206,3 +208,30 @@ def test_empty_response_is_not_hallucinated(one_sentence_per_string):
     result = detector.detect("some context", "")
     assert result.response_hallucinated is False
     assert result.verdicts == []
+
+
+# --- 6. response_color traffic-light aggregation (pure, no model) ----------------------
+
+
+def _verdict(flag):
+    return SentenceVerdict("s", 0.0, 0.0, 0.0, flag)
+
+
+def test_response_color_red_when_any_contradicted():
+    result = DetectionResult(True, [_verdict("supported"), _verdict("contradicted"), _verdict("unverifiable")])
+    assert response_color(result) == "🔴"
+
+
+def test_response_color_yellow_when_only_unverifiable():
+    result = DetectionResult(True, [_verdict("supported"), _verdict("unverifiable")])
+    assert response_color(result) == "🟡"
+
+
+def test_response_color_green_when_all_supported():
+    result = DetectionResult(False, [_verdict("supported"), _verdict("supported")])
+    assert response_color(result) == "🟢"
+
+
+def test_response_color_green_when_no_verdicts():
+    result = DetectionResult(False, [])
+    assert response_color(result) == "🟢"
