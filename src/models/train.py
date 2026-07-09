@@ -79,6 +79,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--push_to_hub", action="store_true", help="Off by default; Kaggle-only, needs an HF token.")
     parser.add_argument("--hub_model_id", default=None, help="Target repo id; required when --push_to_hub is set.")
+    parser.add_argument(
+        "--max_train_samples", type=int, default=None, help="Cap train rows for a quick smoke test (default: all)."
+    )
+    parser.add_argument(
+        "--max_eval_samples", type=int, default=None, help="Cap val rows for a quick smoke test (default: all)."
+    )
     return parser.parse_args()
 
 
@@ -241,6 +247,18 @@ def main() -> None:
     train_ds, train_df = load_split(args.train_path)
     val_ds, _ = load_split(args.val_path)
     test_ds, test_df = load_split(args.test_path)
+
+    # Optional smoke-test caps (train/val only -- test is never artificially shrunk).
+    if args.max_train_samples is not None:
+        n = min(args.max_train_samples, len(train_ds))
+        train_ds = train_ds.select(range(n))
+        train_df = train_df.iloc[:n].reset_index(drop=True)
+        print(f"WARNING: using only {n} training rows (smoke test mode)", flush=True)
+    if args.max_eval_samples is not None:
+        n = min(args.max_eval_samples, len(val_ds))
+        val_ds = val_ds.select(range(n))
+        print(f"WARNING: using only {n} eval rows (smoke test mode)", flush=True)
+
     test_task_types = test_df["task_type"].tolist()
     counts = {"train_rows": len(train_ds), "val_rows": len(val_ds), "test_rows": len(test_ds)}
     print(f"rows -> train {counts['train_rows']} | val {counts['val_rows']} | test {counts['test_rows']}", flush=True)
