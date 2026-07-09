@@ -369,3 +369,26 @@ than assumed to be fully solved by a longer-context backbone alone.
 
 **Status:** Documented. Informs Phase 4's evaluation design and Approach 1/3
 expectations.
+
+## ADR-011: ModernBERT eliminates truncation entirely on RAGTruth
+
+**Context:** ADR-004 hypothesized that switching to a long-context encoder
+(ModernBERT, 8192 native context, used here at max_length=4096) would substantially
+reduce or eliminate the truncation problem quantified in Phase 1's EDA (70.34% of
+rows exceeded DeBERTa-v3's 512-token limit).
+
+**Finding:** Confirmed directly. At max_length=4096, 0.00% of rows require any
+truncation across all three task_types (Summary, QA, Data2txt) and all three splits
+(train/val/test) — verified both by an independent pre-truncation diagnostic
+(report_combined_length_exceedance, max observed combined length: 2618 tokens) and
+by the actual was_truncated flag computed during real tokenization. The single
+response-length outlier excluded in the DeBERTa pipeline (Phase 1, ADR-006) did not
+need exclusion here, as its 770 tokens fit comfortably within the 4096 budget.
+
+**Decision:** Proceed to train a response-level classifier
+(src/models/train_modernbert.py) on this truncation-free data, to directly test
+ADR-010's hypothesis: does eliminating truncation reduce the false-positive
+(precision) cost previously observed on truncated rows, particularly for Data2txt
+and Summary?
+
+**Status:** Data pipeline complete and verified. Training pending.
