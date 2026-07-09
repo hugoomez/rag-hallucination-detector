@@ -1,0 +1,66 @@
+{
+  "model_name": "microsoft/deberta-v3-base",
+  "hyperparameters": {
+    "learning_rate": 2e-05,
+    "per_device_train_batch_size": 16,
+    "num_train_epochs": 5.0,
+    "warmup_ratio": 0.1,
+    "weight_decay": 0.01,
+    "seed": 42,
+    "class_weights": [
+      0.9028,
+      1.1207
+    ]
+  },
+  "counts": {
+    "train_rows": 13578,
+    "val_rows": 1511,
+    "test_rows": 2700
+  },
+  "val": {
+    "finetuned": {
+      "accuracy": 0.7809397749834547,
+      "precision": 0.7794612794612794,
+      "recall": 0.698340874811463,
+      "f1": 0.7366746221161495
+    }
+  },
+  "test": {
+    "finetuned": {
+      "accuracy": 0.8051851851851852,
+      "precision": 0.7366628830874007,
+      "recall": 0.6882290562036055,
+      "f1": 0.7116228070175439
+    },
+    "always_hallucinated": {
+      "precision": 0.34925925925925927,
+      "recall": 1.0,
+      "f1": 0.5177051880318418
+    },
+    "random": {
+      "precision": 0.3497390007457122,
+      "recall": 0.4973488865323436,
+      "f1": 0.4106830122591944
+    },
+    "per_task_type": {
+      "Summary": {
+        "n": 900,
+        "precision": 0.5154639175257731,
+        "recall": 0.24509803921568626,
+        "f1": 0.33222591362126247
+      },
+      "QA": {
+        "n": 900,
+        "precision": 0.5333333333333333,
+        "recall": 0.65,
+        "f1": 0.5859154929577465
+      },
+      "Data2txt": {
+        "n": 900,
+        "precision": 0.8404074702886248,
+        "recall": 0.8549222797927462,
+        "f1": 0.8476027397260274
+      }
+    }
+  }
+}
