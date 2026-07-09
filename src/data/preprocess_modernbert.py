@@ -26,7 +26,6 @@ from transformers import AutoTokenizer
 from src.data.preprocess import (
     RANDOM_STATE,
     VAL_SIZE,
-    build_response_level_dataset,
     filter_oversized_responses,
     load_merged_dataframe,
     make_group_stratified_val_split,
@@ -81,6 +80,73 @@ def report_combined_length_exceedance(merged_df: pd.DataFrame, tokenizer, max_le
     return combined_len
 
 
+def tokenize_modernbert(context: str, response: str, tokenizer, max_length: int = MAX_LENGTH) -> dict:
+    """Tokenize (context, response) as a pair using ModernBERT's fast tokenizer.
+
+    ModernBERT's fast-tokenizer backend does not implement prepare_for_model (which the
+    reused preprocess.truncate_and_tokenize relies on), so this uses the standard fast
+    pair-encoding call. truncation="only_first" truncates the context (first sequence)
+    if the pair ever exceeds max_length, always preserving the full response — the same
+    guarantee ADR-004 gives. Given the combined-length diagnostic showed 0% of rows
+    exceed 4096 (max observed 2618), this truncation branch is not expected to trigger,
+    but the safety-net assertion and the properly computed was_truncated flag stay in.
+    """
+    encoding = tokenizer(
+        context,
+        response,
+        max_length=max_length,
+        truncation="only_first",
+        return_token_type_ids=False,
+    )
+
+    # Permanent safety net (same pattern as the DeBERTa pipeline's own assertion).
+    assert (
+        len(encoding["input_ids"]) <= max_length
+    ), f"Token budget violated: got {len(encoding['input_ids'])} tokens (max {max_length})"
+
+    # was_truncated: did the untruncated pair (context + response + special tokens) exceed
+    # the budget? Computed from raw token counts rather than hardcoded False, even though
+    # the diagnostic says this is False for every RAGTruth row at max_length=4096.
+    num_special_tokens = tokenizer.num_special_tokens_to_add(pair=True)
+    context_len = len(tokenizer(context, add_special_tokens=False)["input_ids"])
+    response_len = len(tokenizer(response, add_special_tokens=False)["input_ids"])
+    was_truncated = (context_len + response_len + num_special_tokens) > max_length
+
+    return {
+        "input_ids": encoding["input_ids"],
+        "attention_mask": encoding["attention_mask"],
+        "was_truncated": was_truncated,
+    }
+
+
+def build_response_level_dataset_modernbert(
+    merged_df: pd.DataFrame, tokenizer, max_length: int = MAX_LENGTH
+) -> pd.DataFrame:
+    """Apply tokenize_modernbert row-wise and assemble the response-level dataset.
+
+    Local equivalent of preprocess.build_response_level_dataset, differing only in the
+    per-row tokenizer call (tokenize_modernbert instead of the prepare_for_model-based
+    truncate_and_tokenize). Output schema is identical to the DeBERTa pipeline.
+    """
+    encodings = merged_df.apply(
+        lambda row: tokenize_modernbert(row["context"], row["response"], tokenizer, max_length),
+        axis=1,
+        result_type="expand",
+    )
+
+    return pd.DataFrame(
+        {
+            "source_id": merged_df["source_id"],
+            "input_ids": encodings["input_ids"],
+            "attention_mask": encodings["attention_mask"],
+            "label_response": merged_df["labels"].apply(lambda labels: int(len(labels) > 0)),
+            "was_truncated": encodings["was_truncated"],
+            "task_type": merged_df["task_type"],
+            "split": merged_df["split"],
+        }
+    )
+
+
 def main() -> None:
     print(f"Loading tokenizer: {MODEL_NAME}")
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
@@ -98,7 +164,7 @@ def main() -> None:
         "Tokenizing (context, response) pairs — context head-truncated, response always kept whole "
         f"(max_length={MAX_LENGTH}) ..."
     )
-    processed_df = build_response_level_dataset(merged_df, tokenizer, MAX_LENGTH)
+    processed_df = build_response_level_dataset_modernbert(merged_df, tokenizer, MAX_LENGTH)
 
     train_full_df = processed_df[processed_df["split"] == "train"].reset_index(drop=True)
     test_df = processed_df[processed_df["split"] == "test"].reset_index(drop=True)

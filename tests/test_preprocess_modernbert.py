@@ -2,8 +2,7 @@ import pandas as pd
 import pytest
 from transformers import AutoTokenizer
 
-from src.data.preprocess import truncate_and_tokenize
-from src.data.preprocess_modernbert import report_combined_length_exceedance
+from src.data.preprocess_modernbert import report_combined_length_exceedance, tokenize_modernbert
 
 MODEL_NAME = "answerdotai/ModernBERT-base"
 
@@ -13,14 +12,14 @@ def tokenizer():
     return AutoTokenizer.from_pretrained(MODEL_NAME)
 
 
-def test_truncate_and_tokenize_preserves_short_response_with_long_context(tokenizer):
+def test_tokenize_modernbert_preserves_short_response_with_long_context(tokenizer):
     # Small injected max_length just to exercise the truncation branch quickly; the
     # real-4096 behavior is covered by test_realistic_lengths_not_truncated below.
     long_context = "This is a filler sentence used to pad the context. " * 50
     short_response = "The answer is yes."
     max_length = 128
 
-    result = truncate_and_tokenize(long_context, short_response, tokenizer, max_length=max_length)
+    result = tokenize_modernbert(long_context, short_response, tokenizer, max_length=max_length)
 
     assert result["was_truncated"] is True
     assert len(result["input_ids"]) <= max_length
@@ -40,7 +39,7 @@ def test_realistic_lengths_not_truncated(tokenizer):
     response = "Mitochondria generate ATP, the cell's main energy currency."
     max_length = 4096
 
-    result = truncate_and_tokenize(context, response, tokenizer, max_length=max_length)
+    result = tokenize_modernbert(context, response, tokenizer, max_length=max_length)
 
     assert result["was_truncated"] is False
     assert len(result["input_ids"]) <= max_length
