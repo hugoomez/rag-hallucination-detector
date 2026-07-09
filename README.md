@@ -63,16 +63,26 @@ the raw RAGTruth data).
 |---|---|---|---|
 | Always "hallucinated" (trivial) | 0.349 | 1.000 | 0.518 |
 | Random | 0.350 | 0.497 | 0.411 |
-| **NLI zero-shot (DeBERTa-v3-base, MoritzLaurer checkpoint)** | 0.355 | 0.998 | 0.523 |
-| Fine-tuned (Phase 3) | *pending* | | |
+| NLI zero-shot (DeBERTa-v3-base, MoritzLaurer checkpoint) | 0.355 | 0.998 | 0.523 |
+| **Fine-tuned DeBERTa-v3-base (Track A)** | **0.737** | **0.688** | **0.712** |
 
-**Per task_type (test set):**
+Fine-tuned model: [hugoomezz/deberta-v3-ragtruth-hallucination](https://huggingface.co/hugoomezz/deberta-v3-ragtruth-hallucination)
+
+**Per task_type (test set), zero-shot NLI baseline:**
 
 | task_type | Precision | Recall | F1 |
 |---|---|---|---|
 | Summary | 0.227 | 1.000 | 0.370 |
 | QA | 0.185 | 0.988 | 0.311 |
 | Data2txt | 0.643 | 1.000 | 0.783 |
+
+**Per task_type (test set), fine-tuned Track A:**
+
+| task_type | Precision | Recall | F1 |
+|---|---|---|---|
+| Summary | 0.515 | 0.245 | 0.332 |
+| QA | 0.533 | 0.650 | 0.586 |
+| Data2txt | 0.840 | 0.855 | 0.848 |
 
 The zero-shot NLI baseline (F1 0.523) barely outperforms the trivial "always
 hallucinated" baseline (F1 0.518): with recall ≈1.0 it flags almost everything, so
@@ -90,4 +100,23 @@ where the task-type-aware chunking of [ADR-008](docs/decisions.md) turns structu
 fields into clean `key: value` evidence. These findings motivate the fine-tuned
 approach in Phase 3, which should learn domain-appropriate support/contradiction
 calibration the zero-shot model lacks.
+
+Fine-tuning clearly delivers: F1 climbs from 0.523 (zero-shot NLI) to 0.712, a
+substantial jump driven by precision moving from near-non-discriminative (0.355) to
+0.737 while recall drops from an over-flagging ~1.0 to a more selective 0.688.
+Per-task_type results show **Data2txt is now the strongest (F1 0.848)** and
+**Summary the weakest (F1 0.332, recall only 0.245)** — the inverse of the zero-shot
+baseline's near-perfect recall, confirming the fine-tuned model is discriminating
+rather than just flagging everything. A truncation-correlation diagnostic
+(`scripts/analyze_track_a_predictions.py`, see [ADR-010](docs/decisions.md)) found
+that context truncation's cost is **precision-driven, not recall-driven** as
+originally hypothesized in [ADR-004](docs/decisions.md#adr-004-long-context-truncation-strategy-for-deberta-v3-input):
+truncated rows actually show *higher* recall on hallucinated examples than
+untruncated rows, but *lower* overall accuracy, implying truncation mainly causes
+faithful responses to be over-flagged, not hallucinations to be missed. The same
+diagnostic found Summary's low recall is largely independent of truncation —
+both truncated and untruncated Summary rows score similarly poorly — pointing
+instead to "subtle" hallucination types (RAGTruth's rarest label category) being
+inherently harder to detect regardless of context completeness (see
+[ADR-010](docs/decisions.md) for full detail).
 
