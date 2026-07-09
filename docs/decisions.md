@@ -326,3 +326,46 @@ pairs cannot achieve.
 **Status:** Documented. scripts/diagnose_baseline_flagging.py kept in the repo as
 a reusable diagnostic for future baseline/model comparisons.
 
+---
+
+## ADR-010: Empirical truncation impact on Track A is precision-driven, not recall-driven
+
+**Context:** ADR-004 hypothesized that context truncation would primarily harm recall
+(the model missing hallucinations because supporting/contradicting evidence gets cut
+off). A diagnostic on the fine-tuned Track A model's test predictions
+(scripts/analyze_track_a_predictions.py), correlating was_truncated with per-row
+correctness, tested this directly.
+
+**Finding:** The opposite pattern was observed. Truncated rows have HIGHER recall on
+hallucinated examples than untruncated rows, in both task types where the comparison
+is possible (Summary: 0.278 truncated vs. 0.151 untruncated; QA: 0.750 truncated vs.
+0.576 untruncated). However, truncated rows have LOWER overall accuracy (0.778 vs.
+0.859), implying the truncation cost is concentrated in PRECISION (more false
+positives — faithful responses flagged as hallucinated) rather than recall. A
+plausible mechanism: when the model has less context to confirm a claim is
+supported, it appears biased toward predicting "hallucinated" rather than "faithful"
+under uncertainty, likely reinforced by the mildly hallucination-favoring class
+weights ([0.90, 1.12]) used in training.
+
+A separate implication: Summary's low overall recall (0.245, the model's weakest
+metric) is NOT well explained by truncation — both truncated (0.278) and untruncated
+(0.151) Summary rows show similarly poor recall, with the untruncated subset actually
+worse. This suggests Summary's weakness has a different primary cause than context
+truncation, possibly the prevalence of "subtle" hallucination types (RAGTruth's
+rarest label category) which may be inherently harder to detect regardless of
+context completeness.
+
+**Decision:** ADR-004's roadmap (Approach 1: ModernBERT, Approach 3: claim
+decomposition + retrieval) remains justified — truncation does measurably hurt
+accuracy via precision, and eliminating it is still expected to help. However, the
+original framing ("truncation causes missed hallucinations") is corrected to
+"truncation causes over-flagging of faithful content." This changes what we should
+watch for when evaluating Approach 1/3: expect precision gains on truncation-heavy
+task types (Data2txt, Summary) rather than assuming recall will be the primary
+metric that improves. Separately, Summary's recall weakness should be treated as a
+partially independent problem, worth investigating on its own terms (e.g., checking
+performance specifically on "subtle" vs. "evident" hallucination sub-types) rather
+than assumed to be fully solved by a longer-context backbone alone.
+
+**Status:** Documented. Informs Phase 4's evaluation design and Approach 1/3
+expectations.
