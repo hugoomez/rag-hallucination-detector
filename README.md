@@ -8,6 +8,13 @@ Hallucination detector for RAG systems based on DeBERTa-v3 + NLI, trained on RAG
 
 🚧 Work in progress. See `docs/00-roadmap.md` for the implementation plan.
 
+## Setup
+
+```bash
+pip install --upgrade pip  # on fresh Python 3.12 environments, an old pip fails due to the removed distutils module — unrelated to any package in requirements.txt
+pip install -r requirements.txt
+```
+
 ## Dataset
 
 This project trains and evaluates on [RAGTruth](https://github.com/ParticleMedia/RAGTruth)
