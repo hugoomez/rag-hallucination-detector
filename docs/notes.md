@@ -146,3 +146,16 @@ longer a valid probability distribution (won't sum to 1 with the implied neutral
 it's two independent signals, not one sentence's full output — but this is necessary
 and correct for the aggregation to actually catch contradictions.
 
+## Track B — token-level BIO preprocessing verified
+
+`preprocess_token_level.py`'s alignment diagnostic was visually confirmed correct
+across 6 sample rows on the real Kaggle run, including edge cases: a
+subword-split span ("Wi-Fi," -> 4 separate tokens, all correctly tagged
+B-HALL/I-HALL), a 24-token-long span (a full sentence), and a zero-hallucination
+row (all tokens O, confirming the negative case). Consistent with ADR-011,
+truncation was 0.00% across all three splits and task_types for the token-level
+pipeline as well. Rough character-based class-balance estimate (Option A
+diagnostic, pre-tokenization): ~94.7% O tokens vs. ~5.3% B-HALL+I-HALL combined
+-- expect real token-level class weighting to matter significantly more here
+than it did for response-level classification.
+
