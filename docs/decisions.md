@@ -369,3 +369,64 @@ than assumed to be fully solved by a longer-context backbone alone.
 
 **Status:** Documented. Informs Phase 4's evaluation design and Approach 1/3
 expectations.
+
+## ADR-011: ModernBERT eliminates truncation entirely on RAGTruth
+
+**Context:** ADR-004 hypothesized that switching to a long-context encoder
+(ModernBERT, 8192 native context, used here at max_length=4096) would substantially
+reduce or eliminate the truncation problem quantified in Phase 1's EDA (70.34% of
+rows exceeded DeBERTa-v3's 512-token limit).
+
+**Finding:** Confirmed directly. At max_length=4096, 0.00% of rows require any
+truncation across all three task_types (Summary, QA, Data2txt) and all three splits
+(train/val/test) — verified both by an independent pre-truncation diagnostic
+(report_combined_length_exceedance, max observed combined length: 2618 tokens) and
+by the actual was_truncated flag computed during real tokenization. The single
+response-length outlier excluded in the DeBERTa pipeline (Phase 1, ADR-006) did not
+need exclusion here, as its 770 tokens fit comfortably within the 4096 budget.
+
+**Decision:** Proceed to train a response-level classifier
+(src/models/train_modernbert.py) on this truncation-free data, to directly test
+ADR-010's hypothesis: does eliminating truncation reduce the false-positive
+(precision) cost previously observed on truncated rows, particularly for Data2txt
+and Summary?
+
+**Status:** Data pipeline complete and verified. Training pending.
+
+## ADR-012: ModernBERT Approach 1 results — recall-driven improvement, not precision-driven
+
+**Context:** ADR-010 hypothesized that eliminating context truncation (via ADR-011's
+ModernBERT pipeline) would primarily improve PRECISION, based on the observation
+that DeBERTa Track A's truncated rows had lower accuracy driven by more false
+positives under uncertainty.
+
+**Finding:** The real controlled comparison (same task, same training recipe,
+different backbone/context length) showed a different mechanism than predicted.
+Overall test F1 improved (0.7116 -> 0.7257), but PRECISION actually decreased
+slightly (0.7367 -> 0.6839) while RECALL improved substantially (0.6882 -> 0.7731).
+The improvement is heavily concentrated in Summary, where recall more than doubled
+(0.245 -> 0.569, +0.324) and F1 rose from 0.332 to 0.509 -- the task type with the
+longest, most dispersed evidence requirements, and the one ADR-010 flagged as having
+a recall weakness NOT well-explained by truncation status alone under the 512-token
+architecture. QA and Data2txt saw only marginal changes (already performing well
+under truncation or already resilient to it).
+
+**Interpretation:** ADR-010's within-architecture "truncated vs. untruncated rows"
+comparison did not fully predict the effect of an across-architecture, truncation-
+free redesign. The mechanism that actually improved was the model's ability to
+locate evidence scattered across a full long document (raising recall), rather than
+reduced false-positive behavior under partial-context uncertainty (which would have
+raised precision). This is a useful methodological lesson: correlational diagnostics
+on a fixed architecture (ADR-010) do not necessarily predict the causal effect of
+changing that architecture (ADR-012) -- both findings are valid but answer different
+questions.
+
+**Decision:** Approach 1 (ModernBERT, response-level) is adopted as the stronger
+response-level model going forward, given its clear overall F1 gain and the
+resolution of Summary's severe recall weakness. Track B (token-level span
+detection) should be pursued next on this ModernBERT backbone rather than DeBERTa,
+both because it is now the stronger base model and because it matches the actual
+LettuceDetect SOTA recipe referenced throughout this project's research.
+
+**Status:** Response-level comparison complete. Track B (token-level, ModernBERT)
+planned next.
