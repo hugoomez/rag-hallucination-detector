@@ -102,11 +102,11 @@ def load_split(path: str) -> tuple[datasets.Dataset, pd.DataFrame]:
     return ds, df
 
 
-def compute_class_weights(labels: list[int]) -> torch.Tensor:
+def compute_class_weights(labels: list[int], num_labels: int = NUM_LABELS) -> torch.Tensor:
     """Inverse-frequency weights from the ACTUAL train labels: w_c = N / (num_classes * count_c)."""
-    counts = np.bincount(labels, minlength=NUM_LABELS)
+    counts = np.bincount(labels, minlength=num_labels)
     total = counts.sum()
-    weights = total / (NUM_LABELS * counts)
+    weights = total / (num_labels * counts)
     return torch.tensor(weights, dtype=torch.float32)
 
 
