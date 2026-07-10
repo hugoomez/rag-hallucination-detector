@@ -64,7 +64,8 @@ the raw RAGTruth data).
 | Always "hallucinated" (trivial) | 0.349 | 1.000 | 0.518 |
 | Random | 0.350 | 0.497 | 0.411 |
 | NLI zero-shot (DeBERTa-v3-base, MoritzLaurer checkpoint) | 0.355 | 0.998 | 0.523 |
-| **Fine-tuned DeBERTa-v3-base (Track A)** | **0.737** | **0.688** | **0.712** |
+| Fine-tuned DeBERTa-v3-base (Track A) | 0.737 | 0.688 | 0.712 |
+| **Fine-tuned ModernBERT-base (Approach 1)** | 0.6839 | 0.7731 | 0.7257 |
 
 Fine-tuned model: [hugoomezz/deberta-v3-ragtruth-hallucination](https://huggingface.co/hugoomezz/deberta-v3-ragtruth-hallucination)
 
@@ -76,13 +77,13 @@ Fine-tuned model: [hugoomezz/deberta-v3-ragtruth-hallucination](https://huggingf
 | QA | 0.185 | 0.988 | 0.311 |
 | Data2txt | 0.643 | 1.000 | 0.783 |
 
-**Per task_type (test set), fine-tuned Track A:**
+**Per task_type (test set), fine-tuned Track A vs. ModernBERT Approach 1:**
 
-| task_type | Precision | Recall | F1 |
-|---|---|---|---|
-| Summary | 0.515 | 0.245 | 0.332 |
-| QA | 0.533 | 0.650 | 0.586 |
-| Data2txt | 0.840 | 0.855 | 0.848 |
+| task_type | Track A Precision | Track A Recall | Track A F1 | ModernBERT Precision | ModernBERT Recall | ModernBERT F1 |
+|---|---|---|---|---|---|---|
+| Summary | 0.515 | 0.245 | 0.332 | 0.460 | 0.569 | 0.509 |
+| QA | 0.533 | 0.650 | 0.586 | 0.524 | 0.681 | 0.592 |
+| Data2txt | 0.840 | 0.855 | 0.848 | 0.832 | 0.870 | 0.851 |
 
 The zero-shot NLI baseline (F1 0.523) barely outperforms the trivial "always
 hallucinated" baseline (F1 0.518): with recall ≈1.0 it flags almost everything, so
@@ -119,4 +120,22 @@ both truncated and untruncated Summary rows score similarly poorly — pointing
 instead to "subtle" hallucination types (RAGTruth's rarest label category) being
 inherently harder to detect regardless of context completeness (see
 [ADR-010](docs/decisions.md) for full detail).
+
+[ADR-011](docs/decisions.md#adr-011-modernbert-eliminates-truncation-entirely-on-ragtruth)
+confirmed that switching to ModernBERT-base (max_length=4096) eliminates truncation
+entirely on RAGTruth (0.00% of rows truncated, vs. 70.34% under DeBERTa's 512-token
+limit). Training the same response-level recipe on this truncation-free backbone
+(Approach 1) raised overall F1 from 0.712 to 0.726 — but,
+contrary to ADR-010's prediction that truncation's cost was precision-driven,
+[ADR-012](docs/decisions.md#adr-012-modernbert-approach-1-results--recall-driven-improvement-not-precision-driven)
+found the gain is actually recall-driven: precision slipped slightly (0.737 → 0.684)
+while recall jumped (0.688 → 0.773). The effect is concentrated almost entirely in
+**Summary**, where recall more than doubled (0.245 → 0.569) and F1 rose from 0.332 to
+0.509, resolving the severe recall weakness Track A left unexplained; QA and
+Data2txt shifted only marginally. The lesson: a correlational diagnostic on a fixed
+architecture (ADR-010) does not necessarily predict the causal effect of changing
+that architecture (ADR-012) — ModernBERT's long context helps the model *find*
+scattered evidence rather than making it less trigger-happy under uncertainty.
+Approach 1 is now the stronger response-level model; Track B (token-level span
+detection) is planned next on this ModernBERT backbone.
 

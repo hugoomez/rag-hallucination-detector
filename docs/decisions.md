@@ -392,3 +392,41 @@ ADR-010's hypothesis: does eliminating truncation reduce the false-positive
 and Summary?
 
 **Status:** Data pipeline complete and verified. Training pending.
+
+## ADR-012: ModernBERT Approach 1 results — recall-driven improvement, not precision-driven
+
+**Context:** ADR-010 hypothesized that eliminating context truncation (via ADR-011's
+ModernBERT pipeline) would primarily improve PRECISION, based on the observation
+that DeBERTa Track A's truncated rows had lower accuracy driven by more false
+positives under uncertainty.
+
+**Finding:** The real controlled comparison (same task, same training recipe,
+different backbone/context length) showed a different mechanism than predicted.
+Overall test F1 improved (0.7116 -> 0.7257), but PRECISION actually decreased
+slightly (0.7367 -> 0.6839) while RECALL improved substantially (0.6882 -> 0.7731).
+The improvement is heavily concentrated in Summary, where recall more than doubled
+(0.245 -> 0.569, +0.324) and F1 rose from 0.332 to 0.509 -- the task type with the
+longest, most dispersed evidence requirements, and the one ADR-010 flagged as having
+a recall weakness NOT well-explained by truncation status alone under the 512-token
+architecture. QA and Data2txt saw only marginal changes (already performing well
+under truncation or already resilient to it).
+
+**Interpretation:** ADR-010's within-architecture "truncated vs. untruncated rows"
+comparison did not fully predict the effect of an across-architecture, truncation-
+free redesign. The mechanism that actually improved was the model's ability to
+locate evidence scattered across a full long document (raising recall), rather than
+reduced false-positive behavior under partial-context uncertainty (which would have
+raised precision). This is a useful methodological lesson: correlational diagnostics
+on a fixed architecture (ADR-010) do not necessarily predict the causal effect of
+changing that architecture (ADR-012) -- both findings are valid but answer different
+questions.
+
+**Decision:** Approach 1 (ModernBERT, response-level) is adopted as the stronger
+response-level model going forward, given its clear overall F1 gain and the
+resolution of Summary's severe recall weakness. Track B (token-level span
+detection) should be pursued next on this ModernBERT backbone rather than DeBERTa,
+both because it is now the stronger base model and because it matches the actual
+LettuceDetect SOTA recipe referenced throughout this project's research.
+
+**Status:** Response-level comparison complete. Track B (token-level, ModernBERT)
+planned next.
