@@ -92,3 +92,57 @@ Starting point for `TrainingArguments` in Phase 3, for the `base` model size:
 
 \- Max epochs: up to 10
 
+---
+
+## Phase 1 — RAGTruth EDA findings
+
+Key numbers from exploring RAGTruth before preprocessing (see
+`notebooks/01_eda_ragtruth.ipynb` for full detail and saved charts in `results/`):
+
+- Class balance: 56.9% faithful responses, 43.1% with at least one
+  hallucination span — reasonably balanced, but still justifies using F1
+  over accuracy (per `theory.md` block F).
+- Hallucination rate varies sharply by generating model: GPT-3.5/GPT-4 ~13-14%,
+  Llama-2 variants 47-62%, Mistral-7B-instruct highest at 65.9%.
+- Span-level label type distribution is dominated by "evident" errors:
+  Evident Baseless Info (6237) and Evident Conflict (5324) far outnumber
+  Subtle Baseless Info (2527) and especially Subtle Conflict (201) — matching
+  RAGTruth's published statistics.
+- Context length varies drastically by task_type (DeBERTa-v3 tokens):
+  QA mean 307 (max 617, safest), Data2txt mean 761 (most consistent, nearly
+  all exceed 512), Summary mean 690 but with the widest spread (std 398.7,
+  max 2189 — the longest tail). Responses are almost always short (mean 160).
+- 70.34% of rows exceed 512 tokens when combining context+response+special
+  tokens; hallucinated rows are over-represented among truncated ones
+  (50.52% vs 43.08% globally) — truncation disproportionately affects the
+  cases hardest to verify. This finding drove ADR-004.
+
+## Phase 1 — Code review lessons (src/data/preprocess.py)
+
+A code review caught two silent-failure risks worth remembering as patterns:
+- Clamping a truncation budget to a minimum (e.g., "context tokens = 0") can
+  mask a downstream constraint violation (total sequence length) if nothing
+  asserts the final invariant. Always assert the property you actually care
+  about (final length <= max_length), not just the intermediate one you
+  computed towards it.
+- A merge/join row-count check (e.g., "no fan-out duplication") does NOT
+  catch unmatched keys producing NaN rows that survive silently until a much
+  later, harder-to-trace error. Check both directions explicitly.
+
+## Phase 2 — NLI baseline: independent max-entailment and max-contradiction tracking
+
+When aggregating NLI scores across multiple context sentences for a single response
+sentence, it's tempting to just keep the (entailment, neutral, contradiction) triple
+from whichever context sentence had the highest entailment. This is wrong: since NLI
+outputs are a 3-way softmax (always summing to 1) computed independently per context
+sentence, the sentence with the highest entailment will almost always have a low
+contradiction score by construction — but a DIFFERENT context sentence entirely may be
+the one that actually contradicts the claim. Softmax constraints apply within one
+comparison, not across different comparisons.
+
+Fix: track max entailment and max contradiction independently, potentially from two
+different context sentences. The resulting (entailment, contradiction) pair is no
+longer a valid probability distribution (won't sum to 1 with the implied neutral) —
+it's two independent signals, not one sentence's full output — but this is necessary
+and correct for the aggregation to actually catch contradictions.
+
