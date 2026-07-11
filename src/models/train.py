@@ -105,6 +105,12 @@ def load_split(path: str) -> tuple[datasets.Dataset, pd.DataFrame]:
 def compute_class_weights(labels: list[int], num_labels: int = NUM_LABELS) -> torch.Tensor:
     """Inverse-frequency weights from the ACTUAL train labels: w_c = N / (num_classes * count_c)."""
     counts = np.bincount(labels, minlength=num_labels)
+    if (counts == 0).any():
+        missing = np.flatnonzero(counts == 0).tolist()
+        raise ValueError(
+            f"Cannot compute inverse-frequency class weights: class(es) {missing} have zero "
+            "training examples (would silently yield inf weights and a NaN loss)."
+        )
     total = counts.sum()
     weights = total / (num_labels * counts)
     return torch.tensor(weights, dtype=torch.float32)

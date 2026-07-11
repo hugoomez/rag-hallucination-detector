@@ -1,13 +1,22 @@
-"""Build token-level BIO-labeled train/val/test parquet datasets from RAGTruth for Track B.
+"""Build binary token-labeled train/val/test parquet datasets from RAGTruth for Track B.
+
+Per ADR-013 (LettuceDetect parity, arXiv:2502.17125), each response token gets a BINARY
+label: 0 = supported, 1 = hallucinated (any character overlap with a gold span). The
+earlier 3-class BIO scheme was retired: it created an ultra-rare B-HALL class (0.35% of
+tokens) whose inverse-frequency weight actively rewarded span fragmentation. Span
+boundaries are now reconstructed at inference time by merging consecutive positive
+tokens (train_token_level.py), not learned as separate classes.
 
 Reuses source-loading, context normalization, and splitting utilities from
 src/data/preprocess.py. Tokenizes (context, response) pairs with ModernBERT's fast
-tokenizer using return_offsets_mapping=True, then assigns each response token an
-O/B-HALL/I-HALL label based on character-offset overlap with RAGTruth's hallucination
-spans (which are relative to the response text alone -- verified empirically against
-the tokenizer's per-sequence offsets). Context and special tokens get -100 (ignored by
-the loss). Per ADR-011, 0% of rows exceed the 4096-token budget, so no sliding-window
-logic is needed; a truncation guard is kept as a sanity check only.
+tokenizer using return_offsets_mapping=True; RAGTruth's hallucination spans are relative
+to the response text alone, matching the tokenizer's per-sequence offsets (verified
+empirically). Context and special tokens get -100 (ignored by the loss). Gold spans are
+normalized (sorted, overlapping/adjacent spans unioned -- RAGTruth has 115 responses
+with overlapping annotations) and saved per row, alongside per-token character offsets,
+so the trainer can compute LettuceDetect's character-overlap span metrics. Per ADR-011,
+0% of rows exceed the 4096-token budget, so no sliding-window logic is needed; a
+truncation guard is kept as a sanity check only.
 """
 
 import warnings
@@ -27,26 +36,48 @@ from src.data.preprocess import (
 PROCESSED_DIR = Path("data/processed")
 MODEL_NAME = "answerdotai/ModernBERT-base"
 MAX_LENGTH = 4096
-OUTPUT_TEMPLATE = "token_level_modernbert_{split}.parquet"
+OUTPUT_TEMPLATE = "token_level_binary_{split}.parquet"
 
-O_LABEL = 0
-B_LABEL = 1
-I_LABEL = 2
+SUPPORTED_LABEL = 0
+HALLUCINATED_LABEL = 1
 IGNORE_LABEL = -100
-LABEL_NAMES = {O_LABEL: "O", B_LABEL: "B-HALL", I_LABEL: "I-HALL", IGNORE_LABEL: "IGN"}
+LABEL_NAMES = {SUPPORTED_LABEL: "supported", HALLUCINATED_LABEL: "hallucinated", IGNORE_LABEL: "IGN"}
+
+
+def normalize_spans(labels: list[dict]) -> list[tuple[int, int]]:
+    """Sort gold spans and union any that overlap or touch, returning disjoint spans.
+
+    RAGTruth contains overlapping annotations (115 of 17,790 responses), so a plain
+    non-overlap assert would crash on real data. For binary labels the union is
+    semantically lossless (a token in ANY span is hallucinated), and disjoint gold
+    spans keep the character-overlap metric free of double counting.
+    """
+    spans = sorted((label["start"], label["end"]) for label in labels)
+    merged: list[tuple[int, int]] = []
+    for start, end in spans:
+        assert end > start, f"Empty or inverted gold span ({start}, {end})"
+        if merged and start <= merged[-1][1]:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+        else:
+            merged.append((start, end))
+    for (_, prev_end), (next_start, _) in zip(merged, merged[1:]):
+        assert next_start > prev_end, "normalize_spans produced non-disjoint spans"
+    return merged
 
 
 def tokenize_and_align_labels(
     context: str, response: str, labels: list[dict], tokenizer, max_length: int = MAX_LENGTH
 ) -> dict:
-    """Tokenize (context, response) as a pair and assign a BIO label to each token.
+    """Tokenize (context, response) as a pair and assign a binary label to each token.
 
     Context tokens (sequence_id 0) and special tokens (sequence_id None) get -100
-    (ignored by the loss). Response tokens (sequence_id 1) get O/B-HALL/I-HALL based
-    on character-offset overlap with `labels`' start/end spans. Those spans are
-    relative to the response text alone, and the tokenizer's offset_mapping for a
-    paired encoding resets to (0, N) per sequence -- i.e. also relative to each
-    sequence's own original string -- so no offset shifting is needed.
+    (ignored by the loss). Response tokens (sequence_id 1) get 1 (hallucinated) iff
+    they overlap any normalized gold span by at least one character, else 0
+    (supported). Those spans are relative to the response text alone, and the
+    tokenizer's offset_mapping for a paired encoding resets to (0, N) per sequence --
+    i.e. also relative to each sequence's own original string -- so no offset shifting
+    is needed. Per-token offsets and the normalized gold spans are returned too, so
+    the trainer can rebuild character-level spans from token predictions.
     """
     encoding = tokenizer(
         context,
@@ -70,43 +101,29 @@ def tokenize_and_align_labels(
     response_len = len(tokenizer(response, add_special_tokens=False)["input_ids"])
     was_truncated = (context_len + response_len + num_special_tokens) > max_length
 
-    sorted_spans = sorted(((label["start"], label["end"]) for label in labels), key=lambda s: s[0])
-
-    def find_span_id(token_start: int, token_end: int) -> int | None:
-        for span_id, (span_start, span_end) in enumerate(sorted_spans):
-            if token_start < span_end and token_end > span_start:
-                return span_id
-        return None
+    gold_spans = normalize_spans(labels)
 
     token_labels = []
-    prev_span_id = None
     for seq_id, (char_start, char_end) in zip(sequence_ids, offsets):
         if seq_id != 1:
             # Context tokens and special tokens ([CLS]/[SEP]) are always ignored.
             token_labels.append(IGNORE_LABEL)
             continue
-        if char_start == char_end:
-            # Degenerate offset within the response segment (not expected in practice
-            # for ModernBERT's BPE tokenizer, guarded defensively).
-            token_labels.append(O_LABEL)
-            prev_span_id = None
-            continue
-
-        span_id = find_span_id(char_start, char_end)
-        if span_id is None:
-            token_labels.append(O_LABEL)
-            prev_span_id = None
-        elif span_id == prev_span_id:
-            token_labels.append(I_LABEL)
-        else:
-            token_labels.append(B_LABEL)
-            prev_span_id = span_id
+        # A zero-width response-token offset would silently corrupt labels and the
+        # trainer's span reconstruction; ModernBERT's BPE tokenizer never emits one.
+        assert char_start < char_end, f"Zero-width offset ({char_start}, {char_end}) on a response token"
+        overlaps = any(char_start < span_end and char_end > span_start for span_start, span_end in gold_spans)
+        token_labels.append(HALLUCINATED_LABEL if overlaps else SUPPORTED_LABEL)
 
     assert len(token_labels) == len(input_ids)
     return {
         "input_ids": input_ids,
         "attention_mask": encoding["attention_mask"],
         "labels": token_labels,
+        "token_starts": [start for start, _ in offsets],
+        "token_ends": [end for _, end in offsets],
+        "gold_starts": [start for start, _ in gold_spans],
+        "gold_ends": [end for _, end in gold_spans],
         "was_truncated": was_truncated,
     }
 
@@ -125,6 +142,10 @@ def build_token_level_dataset(merged_df: pd.DataFrame, tokenizer, max_length: in
             "input_ids": encodings["input_ids"],
             "attention_mask": encodings["attention_mask"],
             "labels": encodings["labels"],
+            "token_starts": encodings["token_starts"],
+            "token_ends": encodings["token_ends"],
+            "gold_starts": encodings["gold_starts"],
+            "gold_ends": encodings["gold_ends"],
             "was_truncated": encodings["was_truncated"],
             "task_type": merged_df["task_type"],
             "split": merged_df["split"],
@@ -138,8 +159,8 @@ def print_alignment_sample(
     """Visually verify span/token alignment on a few sample rows before trusting it at scale.
 
     Prints the response with raw-offset spans re-highlighted, plus the resulting
-    per-token BIO labels, for `n` hallucinated rows plus one row with zero spans
-    (to visually confirm the "no spans -> all O" case too).
+    per-token binary labels, for `n` hallucinated rows plus one row with zero spans
+    (to visually confirm the "no spans -> all supported" case too).
     """
     has_spans = merged_df[merged_df["labels"].apply(len) > 0]
     no_spans = merged_df[merged_df["labels"].apply(len) == 0]
@@ -152,7 +173,7 @@ def print_alignment_sample(
 
     for _, row in sample_rows.iterrows():
         response = row["response"]
-        spans = sorted(((label["start"], label["end"]) for label in row["labels"]), key=lambda s: s[0])
+        spans = normalize_spans(row["labels"])
 
         highlighted = response
         for start, end in reversed(spans):  # reversed so earlier insertions don't shift later offsets
@@ -160,7 +181,7 @@ def print_alignment_sample(
             highlighted = highlighted[:start] + ">>>" + highlighted[start:]
 
         print(f"\n=== source_id={row['source_id']} task_type={row['task_type']} n_spans={len(spans)} ===")
-        print("Response (spans marked >>>...<<<):")
+        print("Response (normalized spans marked >>>...<<<):")
         print(f"  {highlighted}")
 
         result = tokenize_and_align_labels(row["context"], response, row["labels"], tokenizer, max_length)
@@ -175,12 +196,11 @@ def print_alignment_sample(
                 print(f"  {token!r:20s} label={LABEL_NAMES[label]}")
 
         n_response_tokens = sum(1 for seq_id in sequence_ids if seq_id == 1)
-        n_o = sum(1 for label in result["labels"] if label == O_LABEL)
-        n_b = sum(1 for label in result["labels"] if label == B_LABEL)
-        n_i = sum(1 for label in result["labels"] if label == I_LABEL)
+        n_supported = sum(1 for label in result["labels"] if label == SUPPORTED_LABEL)
+        n_hallucinated = sum(1 for label in result["labels"] if label == HALLUCINATED_LABEL)
         print(
             f"Summary: {len(result['labels']) - n_response_tokens} context/special tokens (-100), "
-            f"response: {n_o} O, {n_b} B-HALL, {n_i} I-HALL"
+            f"response: {n_supported} supported, {n_hallucinated} hallucinated"
         )
 
 
@@ -193,21 +213,25 @@ def main() -> None:
     merged_df = filter_oversized_responses(merged_df, tokenizer, max_length=MAX_LENGTH)
     print(f"Dataset shape after filtering oversized responses: {merged_df.shape}")
 
+    n_merged_rows = int(
+        merged_df["labels"].apply(lambda labels: len(labels) > 0 and len(normalize_spans(labels)) < len(labels)).sum()
+    )
+    print(f"Rows with overlapping/adjacent gold spans unioned by normalize_spans: {n_merged_rows}")
+
     print("\nSanity-checking span/token alignment on sample rows ...")
     print_alignment_sample(merged_df, tokenizer, max_length=MAX_LENGTH)
 
-    print("\nTokenizing (context, response) pairs and assigning BIO labels ...")
+    print("\nTokenizing (context, response) pairs and assigning binary labels ...")
     processed_df = build_token_level_dataset(merged_df, tokenizer, max_length=MAX_LENGTH)
 
     train_full_df = processed_df[processed_df["split"] == "train"].reset_index(drop=True)
     test_df = processed_df[processed_df["split"] == "test"].reset_index(drop=True)
-    test_df["split"] = "test"
 
     # make_group_stratified_val_split stratifies on a scalar "label_response" column
     # (preprocess.py's convention); derive it as a temporary proxy from the per-token
-    # BIO sequence and drop it afterward -- it isn't part of Track B's saved schema.
+    # binary sequence and drop it afterward -- it isn't part of Track B's saved schema.
     train_full_df["label_response"] = train_full_df["labels"].apply(
-        lambda seq: int(any(label in (B_LABEL, I_LABEL) for label in seq))
+        lambda seq: int(any(label == HALLUCINATED_LABEL for label in seq))
     )
     train_df, val_df = make_group_stratified_val_split(train_full_df)
     train_df = train_df.drop(columns=["label_response"])
