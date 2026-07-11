@@ -25,15 +25,26 @@ def normalize_context(row: pd.Series) -> str:
     """Flatten source_info into a single text string, format depends on task_type."""
     task_type = row["task_type"]
     source_info = row["source_info"]
+    source_id = row["source_id"]
 
     if task_type == "Summary":
         return source_info
     elif task_type == "QA":
-        return f"Question: {source_info['question']}\n\nPassages: {source_info['passages']}"
+        try:
+            return f"Question: {source_info['question']}\n\nPassages: {source_info['passages']}"
+        except (KeyError, TypeError) as e:
+            raise ValueError(
+                f"source_id={source_id}: malformed QA source_info ({e!r}): {source_info!r}"
+            ) from e
     elif task_type == "Data2txt":
-        return json.dumps(source_info, indent=2, ensure_ascii=False)
+        try:
+            return json.dumps(source_info, ensure_ascii=False)
+        except TypeError as e:
+            raise ValueError(
+                f"source_id={source_id}: malformed Data2txt source_info ({e!r}): {source_info!r}"
+            ) from e
     else:
-        raise ValueError(f"Unknown task_type: {task_type}")
+        raise ValueError(f"source_id={source_id}: unknown task_type: {task_type}")
 
 
 def load_merged_dataframe(dataset_dir: Path = DATASET_DIR) -> pd.DataFrame:
@@ -45,6 +56,7 @@ def load_merged_dataframe(dataset_dir: Path = DATASET_DIR) -> pd.DataFrame:
 
     merged_df = response_df.merge(source_info_df, on="source_id", how="left")
     assert merged_df.shape[0] == response_df.shape[0], "merge dropped or duplicated rows"
+    assert merged_df["source_info"].notna().all(), "unmatched source_id in response.jsonl"
 
     return merged_df
 
@@ -75,12 +87,18 @@ def filter_oversized_responses(merged_df: pd.DataFrame, tokenizer, max_length: i
     return merged_df.loc[~oversized].reset_index(drop=True)
 
 
-def truncate_and_tokenize(context: str, response: str, tokenizer, max_length: int = MAX_LENGTH) -> dict:
+def truncate_and_tokenize(
+    source_id, context: str, response: str, tokenizer, max_length: int = MAX_LENGTH
+) -> dict:
     """Tokenize (context, response) as a pair, always keeping the full response.
 
     Only the context is truncated, and only from the end (head truncation: the
     beginning of the context is kept, since that's what fits the leftover budget
     after reserving room for the full response + special tokens).
+
+    filter_oversized_responses() should already have dropped rows where the response
+    alone can't fit; the assertion below is a permanent safety net in addition to that
+    upfront filter, in case a row slips through (e.g. filtering logic changes upstream).
     """
     context_ids = tokenizer.encode(context, add_special_tokens=False)
     response_ids = tokenizer.encode(response, add_special_tokens=False)
@@ -100,11 +118,11 @@ def truncate_and_tokenize(context: str, response: str, tokenizer, max_length: in
         return_token_type_ids=False,
     )
 
-    # Safety net per ADR-006: filter_oversized_responses should already guarantee this,
-    # but assert the actual invariant we care about rather than trust the intermediate budget math.
-    assert (
-        len(encoding["input_ids"]) <= max_length
-    ), f"Token budget violated: got {len(encoding['input_ids'])} tokens (max {max_length})"
+    assert len(encoding["input_ids"]) <= max_length, (
+        f"source_id={source_id}: encoded sequence length {len(encoding['input_ids'])} exceeds "
+        f"max_length={max_length} even after context truncation to 0 — the response alone must "
+        f"exceed the token budget. This row should have been dropped by filter_oversized_responses()."
+    )
 
     return {
         "input_ids": encoding["input_ids"],
@@ -113,10 +131,24 @@ def truncate_and_tokenize(context: str, response: str, tokenizer, max_length: in
     }
 
 
+def compute_label_response(row: pd.Series) -> int:
+    """Derive the binary response-level hallucination label from the `labels` column.
+
+    A missing/non-list `labels` value (e.g. NaN from a malformed row) is treated as
+    "no labeled hallucination spans" rather than raising, since a hard crash here would
+    kill the whole preprocessing run over what's likely a single bad row.
+    """
+    labels = row["labels"]
+    if not isinstance(labels, list):
+        print(f"Warning: source_id={row['source_id']} has missing/non-list labels ({labels!r}); treating as empty list.")
+        labels = []
+    return int(len(labels) > 0)
+
+
 def build_response_level_dataset(merged_df: pd.DataFrame, tokenizer, max_length: int = MAX_LENGTH) -> pd.DataFrame:
     """Apply truncate_and_tokenize row-wise and assemble the response-level dataset."""
     encodings = merged_df.apply(
-        lambda row: truncate_and_tokenize(row["context"], row["response"], tokenizer, max_length),
+        lambda row: truncate_and_tokenize(row["source_id"], row["context"], row["response"], tokenizer, max_length),
         axis=1,
         result_type="expand",
     )
@@ -126,7 +158,7 @@ def build_response_level_dataset(merged_df: pd.DataFrame, tokenizer, max_length:
             "source_id": merged_df["source_id"],
             "input_ids": encodings["input_ids"],
             "attention_mask": encodings["attention_mask"],
-            "label_response": merged_df["labels"].apply(lambda labels: int(len(labels) > 0)),
+            "label_response": merged_df.apply(compute_label_response, axis=1),
             "was_truncated": encodings["was_truncated"],
             "task_type": merged_df["task_type"],
             "split": merged_df["split"],
@@ -173,6 +205,25 @@ def print_truncation_report(df: pd.DataFrame, split_name: str) -> None:
     print(f"  {'ALL':10s} n={len(df):5d}  truncated={total_truncated:5d}  ({df['was_truncated'].mean():.2%})")
 
 
+def print_label_balance(train_full_df: pd.DataFrame, train_df: pd.DataFrame, val_df: pd.DataFrame) -> None:
+    """Show label_response balance for the full pre-split train set vs. the train/val split.
+
+    The split stratifies on each source_id group's *majority* label (see
+    make_group_stratified_val_split docstring), not on row-level label_response directly,
+    so this makes the split's real-world effect on row-level balance visible rather than
+    only documented.
+    """
+    balance_df = pd.DataFrame(
+        {
+            "full (pre-split)": train_full_df["label_response"].value_counts(normalize=True),
+            "train": train_df["label_response"].value_counts(normalize=True),
+            "val": val_df["label_response"].value_counts(normalize=True),
+        }
+    ).sort_index()
+    print("\nlabel_response balance (share of rows with label_response=1 is the '1' row):")
+    print(balance_df.to_string(float_format=lambda x: f"{x:.2%}"))
+
+
 def main() -> None:
     print(f"Loading tokenizer: {MODEL_NAME}")
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
@@ -193,7 +244,12 @@ def main() -> None:
 
     train_df, val_df = make_group_stratified_val_split(train_full_df)
 
-    # Sanity check: no source_id (data leakage) shared between train and val.
+    # This checks train/val disjointness "by construction": train_ids and val_ids come from
+    # train_test_split on the same deduplicated source_id array, so they can never overlap
+    # after this point — it's a safety net against a future refactor breaking that, not a
+    # test of anything currently uncertain. The assumption this does NOT verify is upstream:
+    # that RAGTruth's own official train/test split doesn't leak source_ids across those two
+    # sets in the first place.
     train_ids = set(train_df["source_id"])
     val_ids = set(val_df["source_id"])
     leaked_ids = train_ids & val_ids
@@ -202,6 +258,8 @@ def main() -> None:
         f"\nLeakage check passed: 0 source_id overlap between train ({len(train_ids)} unique) "
         f"and val ({len(val_ids)} unique)."
     )
+
+    print_label_balance(train_full_df, train_df, val_df)
 
     for name, df in [("train", train_df), ("val", val_df), ("test", test_df)]:
         print_truncation_report(df, name)
