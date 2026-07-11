@@ -80,3 +80,17 @@ class TestMergePredictions:
     def test_new_system_appends(self):
         merged = cp.merge_predictions(self._rows("sys_a", 0), self._rows("sys_c", 1))
         assert sorted(merged["system"].unique()) == ["sys_a", "sys_c"]
+
+
+class TestParseArgs:
+    def test_tokenizer_id_default_none(self, monkeypatch):
+        import sys
+        monkeypatch.setattr("sys.argv", ["collect_predictions.py", "approach_1"])
+        args = cp.parse_args()
+        assert args.tokenizer_id is None
+
+    def test_tokenizer_id_override(self, monkeypatch):
+        import sys
+        monkeypatch.setattr("sys.argv", ["collect_predictions.py", "approach_1", "--tokenizer_id", "answerdotai/ModernBERT-base"])
+        args = cp.parse_args()
+        assert args.tokenizer_id == "answerdotai/ModernBERT-base"

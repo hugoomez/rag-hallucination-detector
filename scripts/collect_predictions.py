@@ -191,14 +191,20 @@ def load_test_df(path: str) -> pd.DataFrame:
     return df
 
 
-def collect_transformer(system: str, hub_model_id: str, test_path: str, limit: int | None = None) -> pd.DataFrame:
-    """Hub-checkpoint inference over a test parquet, in the unified schema."""
+def collect_transformer(system: str, hub_model_id: str, test_path: str, limit: int | None = None, tokenizer_id: str | None = None) -> pd.DataFrame:
+    """Hub-checkpoint inference over a test parquet, in the unified schema.
+
+    tokenizer_id overrides where the tokenizer is loaded from: the collator only needs
+    padding metadata (rows are pre-tokenized), so the base model's tokenizer is an exact
+    substitute when a fine-tuned repo's tokenizer_config was written by a newer
+    transformers than the local install can parse.
+    """
     df = load_test_df(test_path)
     if limit is not None:
         df = df.head(limit)
     print(f"{system}: {len(df)} rows from {test_path}", flush=True)
 
-    tokenizer = AutoTokenizer.from_pretrained(hub_model_id)
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_id or hub_model_id)
     collator = DataCollatorWithPadding(tokenizer=tokenizer)
     model = AutoModelForSequenceClassification.from_pretrained(hub_model_id)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -225,6 +231,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--unified_path", default=str(UNIFIED_PREDICTIONS_PATH))
     parser.add_argument("--hub_model_id", help="Override the default Hub repo for track_a/approach_1.")
     parser.add_argument("--test_path", help="Override the default test parquet for track_a/approach_1.")
+    parser.add_argument(
+        "--tokenizer_id",
+        help="Override tokenizer repo for track_a/approach_1 (e.g. the base model, when the "
+        "fine-tuned repo's tokenizer_config was written by an incompatible transformers version).",
+    )
     parser.add_argument("--input", help="merge mode: unified-schema parquet to fold in (e.g. from Kaggle).")
     parser.add_argument(
         "--limit",
@@ -247,6 +258,7 @@ def main() -> None:
             hub_model_id=args.hub_model_id or HUB_DEFAULTS[system],
             test_path=args.test_path or TEST_PATH_DEFAULTS[system],
             limit=args.limit,
+            tokenizer_id=args.tokenizer_id,
         )
     else:  # merge
         if not args.input:
