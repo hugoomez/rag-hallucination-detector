@@ -117,3 +117,73 @@ def merge_predictions(existing: pd.DataFrame | None, new: pd.DataFrame) -> pd.Da
     replaced = set(new["system"].unique())
     kept = existing[~existing["system"].isin(replaced)]
     return pd.concat([kept, new], ignore_index=True)
+
+
+def collect_baseline(scores_path: Path = NLI_SCORES_PATH, metrics_path: Path = BASELINE_METRICS_PATH) -> pd.DataFrame:
+    """Aggregate the per-sentence NLI scores to response level in the unified schema.
+
+    Model-free: reuses results/nli_scores_test.json (sentence_scores are
+    [max_entailment, max_contradiction] pairs, ADR-007) and the tuned thresholds
+    already selected on the validation split (results/baseline_nli_metrics.json).
+    """
+    rows = json.loads(Path(scores_path).read_text(encoding="utf-8"))
+    thresholds = json.loads(Path(metrics_path).read_text(encoding="utf-8"))["best_thresholds"]
+
+    all_scores = [[(pair[0], pair[1]) for pair in row["sentence_scores"]] for row in rows]
+    y_pred = [int(flag) for flag in apply_thresholds(all_scores, thresholds["ent_thr"], thresholds["con_thr"])]
+    y_score = [baseline_y_score(scores) for scores in all_scores]
+
+    print(
+        f"Baseline: {len(rows)} rows from {scores_path}, "
+        f"thresholds ent={thresholds['ent_thr']} con={thresholds['con_thr']}"
+    )
+    return build_prediction_rows(
+        system=SYSTEM_BASELINE,
+        source_ids=[row["source_id"] for row in rows],
+        task_types=[row["task_type"] for row in rows],
+        y_true=[int(row["label_response"]) for row in rows],
+        y_pred=y_pred,
+        y_score=y_score,
+    )
+
+
+def save_merged(new_df: pd.DataFrame, unified_path: Path) -> pd.DataFrame:
+    """Merge one stage's rows into the accumulating file and report what it now holds."""
+    unified_path = Path(unified_path)
+    existing = pd.read_parquet(unified_path) if unified_path.exists() else None
+    merged = merge_predictions(existing, new_df)
+    unified_path.parent.mkdir(parents=True, exist_ok=True)
+    merged.to_parquet(unified_path, index=False)
+    print(f"Saved {unified_path} — rows per system:")
+    for system, count in merged["system"].value_counts().sort_index().items():
+        print(f"  {system}: {count}")
+    return merged
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("mode", choices=["baseline", "merge"])
+    parser.add_argument("--unified_path", default=str(UNIFIED_PREDICTIONS_PATH))
+    parser.add_argument("--input", help="merge mode: unified-schema parquet to fold in (e.g. from Kaggle).")
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+    os.chdir(REPO_ROOT)
+
+    if args.mode == "baseline":
+        new_df = collect_baseline()
+    elif args.mode == "merge":
+        if not args.input:
+            raise SystemExit("merge mode requires --input")
+        new_df = pd.read_parquet(args.input)
+        missing = [column for column in UNIFIED_COLUMNS if column not in new_df.columns]
+        if missing:
+            raise SystemExit(f"--input file is missing unified-schema columns: {missing}")
+
+    save_merged(new_df, Path(args.unified_path))
+
+
+if __name__ == "__main__":
+    main()

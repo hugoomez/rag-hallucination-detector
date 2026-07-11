@@ -430,3 +430,29 @@ LettuceDetect SOTA recipe referenced throughout this project's research.
 
 **Status:** Response-level comparison complete. Track B (token-level, ModernBERT)
 planned next.
+
+## ADR-014: Baseline y_score = max over sentences of max(contradiction, 1 - entailment)
+
+**Context:** Phase 4's unified comparison needs one probability-like score per response
+from every system. Fine-tuned classifiers provide softmax P(hallucinated) directly, but
+the zero-shot NLI baseline produces per-sentence (max_entailment, max_contradiction)
+pairs (ADR-007) plus a two-threshold decision rule — there is no single native score.
+
+**Decision:** y_score = max over response sentences of max(contradiction, 1 - entailment).
+The flag rule is a disjunction (not-supported iff contradiction >= con_thr OR
+entailment < ent_thr), and this is its faithful one-dimensional reduction: sweeping a
+single threshold t over the score walks the coupled rule family con_thr = t,
+ent_thr = 1 - t, while preserving ADR-007's contradiction-priority (high contradiction
+dominates the max even under high entailment). Empty responses score 0.0, matching the
+vacuously-not-hallucinated convention.
+
+**Alternatives considered:** max_contradiction alone (rejected: blind to "unverifiable"
+hallucinations, which drive the baseline's 0.997 recall); 1 - min_entailment alone
+(rejected: blind to ADR-007's core case of a claim entailed by one context sentence but
+contradicted by another). Note the tuned operating point (ent_thr=0.4, con_thr=0.4) is
+not on the coupled family, so the recorded y_pred (operational decision) is not exactly
+a threshold on y_score; y_pred and y_score serve different purposes (point metrics vs
+PR curves).
+
+**Status:** Implemented in scripts/collect_predictions.py (baseline mode); verified by
+reproducing results/baseline_nli_metrics.json test metrics from the unified table.
