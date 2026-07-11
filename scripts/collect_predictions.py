@@ -45,7 +45,7 @@ import torch  # noqa: E402
 from torch.utils.data import DataLoader  # noqa: E402
 from transformers import AutoModelForSequenceClassification, AutoTokenizer, DataCollatorWithPadding  # noqa: E402
 
-from src.evaluation.metrics import UNIFIED_COLUMNS, UNIFIED_PREDICTIONS_PATH  # noqa: E402
+from src.evaluation.metrics import UNIFIED_COLUMNS, UNIFIED_PREDICTIONS_PATH, response_level_metrics  # noqa: E402
 from src.models.nli_baseline import apply_thresholds  # noqa: E402
 
 SYSTEM_BASELINE = "baseline_nli"
@@ -160,11 +160,77 @@ def save_merged(new_df: pd.DataFrame, unified_path: Path) -> pd.DataFrame:
     return merged
 
 
+def run_inference_with_probs(df: pd.DataFrame, model, collator, device: torch.device) -> tuple[list[int], list[float]]:
+    """Batched forward pass in row order, returning argmax labels and softmax P(hallucinated).
+
+    Same batching pattern as scripts/analyze_track_a_predictions.py, extended to keep the
+    positive-class probability (index 1 = hallucinated, matching training's
+    label_response encoding) for threshold-free PR curves.
+    """
+    examples = [{"input_ids": row.input_ids, "attention_mask": row.attention_mask} for row in df.itertuples()]
+    loader = DataLoader(examples, batch_size=BATCH_SIZE, shuffle=False, collate_fn=collator)
+
+    model.eval()
+    preds: list[int] = []
+    scores: list[float] = []
+    with torch.no_grad():
+        for batch in loader:
+            batch = {key: value.to(device) for key, value in batch.items()}
+            logits = model(**batch).logits
+            probs = torch.softmax(logits, dim=-1)
+            preds.extend(probs.argmax(dim=-1).cpu().tolist())
+            scores.extend(probs[:, 1].cpu().tolist())
+    return preds, scores
+
+
+def load_test_df(path: str) -> pd.DataFrame:
+    """Read a response-level test parquet; input_ids/attention_mask are already tokenized."""
+    df = pd.read_parquet(path)
+    df["input_ids"] = df["input_ids"].apply(lambda a: np.asarray(a).tolist())
+    df["attention_mask"] = df["attention_mask"].apply(lambda a: np.asarray(a).tolist())
+    return df
+
+
+def collect_transformer(system: str, hub_model_id: str, test_path: str, limit: int | None = None) -> pd.DataFrame:
+    """Hub-checkpoint inference over a test parquet, in the unified schema."""
+    df = load_test_df(test_path)
+    if limit is not None:
+        df = df.head(limit)
+    print(f"{system}: {len(df)} rows from {test_path}", flush=True)
+
+    tokenizer = AutoTokenizer.from_pretrained(hub_model_id)
+    collator = DataCollatorWithPadding(tokenizer=tokenizer)
+    model = AutoModelForSequenceClassification.from_pretrained(hub_model_id)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    print(f"Loaded {hub_model_id} on {device}", flush=True)
+
+    y_pred, y_score = run_inference_with_probs(df, model, collator, device)
+    return build_prediction_rows(
+        system=system,
+        source_ids=df["source_id"].tolist(),
+        task_types=df["task_type"].tolist(),
+        y_true=df["label_response"].astype(int).tolist(),
+        y_pred=y_pred,
+        y_score=y_score,
+    )
+
+
+MODE_TO_SYSTEM = {"track_a": SYSTEM_TRACK_A, "approach_1": SYSTEM_APPROACH_1}
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("mode", choices=["baseline", "merge"])
+    parser.add_argument("mode", choices=["baseline", "track_a", "approach_1", "merge"])
     parser.add_argument("--unified_path", default=str(UNIFIED_PREDICTIONS_PATH))
+    parser.add_argument("--hub_model_id", help="Override the default Hub repo for track_a/approach_1.")
+    parser.add_argument("--test_path", help="Override the default test parquet for track_a/approach_1.")
     parser.add_argument("--input", help="merge mode: unified-schema parquet to fold in (e.g. from Kaggle).")
+    parser.add_argument(
+        "--limit",
+        type=int,
+        help="Smoke test: run inference on only the first N rows, print metrics, and skip writing.",
+    )
     return parser.parse_args()
 
 
@@ -174,13 +240,27 @@ def main() -> None:
 
     if args.mode == "baseline":
         new_df = collect_baseline()
-    elif args.mode == "merge":
+    elif args.mode in MODE_TO_SYSTEM:
+        system = MODE_TO_SYSTEM[args.mode]
+        new_df = collect_transformer(
+            system=system,
+            hub_model_id=args.hub_model_id or HUB_DEFAULTS[system],
+            test_path=args.test_path or TEST_PATH_DEFAULTS[system],
+            limit=args.limit,
+        )
+    else:  # merge
         if not args.input:
             raise SystemExit("merge mode requires --input")
         new_df = pd.read_parquet(args.input)
         missing = [column for column in UNIFIED_COLUMNS if column not in new_df.columns]
         if missing:
             raise SystemExit(f"--input file is missing unified-schema columns: {missing}")
+
+    if args.limit is not None:
+        preview = response_level_metrics(new_df["y_true"].to_numpy(), new_df["y_pred"].to_numpy())
+        print(f"[--limit smoke test] not writing. Metrics on {preview['n']} rows:")
+        print({key: preview[key] for key in ("precision", "recall", "f1")})
+        return
 
     save_merged(new_df, Path(args.unified_path))
 
