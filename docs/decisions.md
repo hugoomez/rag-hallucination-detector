@@ -471,3 +471,35 @@ was diagnosed as actively working against correct span formation; more epochs
 alone would not resolve the fragmentation incentive.
 
 **Status:** Redesign in progress.
+
+## ADR-014: ADR-013's binary-scheme pivot validated — Track B matches LettuceDetect
+
+**Context:** ADR-013 pivoted Track B from 3-class BIO (which produced a
+pathological 0.037 span-F1, diagnosed as caused by an extreme 95x class weight
+on the ultra-rare B-HALL token fragmenting real spans) to binary token
+classification, unweighted loss, char-overlap span evaluation, and 8 epochs
+(up from 5), matching LettuceDetect's actual recipe (arXiv:2502.17125).
+
+**Finding:** The redesign succeeded, closely matching published LettuceDetect-base
+numbers on the same benchmark:
+- Response/example-level F1: 76.11% (ours) vs. 76.07% (LettuceDetect-base
+  published) -- a 0.04-point difference, functionally equivalent.
+- Span-level (char-overlap) F1: 51.13% (ours) vs. 55.44% (LettuceDetect-base
+  published) -- close, somewhat below, plausibly explainable by their A100
+  training vs. our T4-constrained batch size/epochs, or minor implementation
+  differences in span merging.
+- This also makes Track B the best-performing system in this project at
+  response level, surpassing Track A (0.7116) and Approach 1 (0.7257) despite
+  being trained on a harder, more granular objective (exact token spans) than
+  either.
+
+**Interpretation:** This confirms the code review's diagnosis (ADR-013) was
+correct: the original BIO scheme's near-total failure was caused by the
+training recipe (weighting + label granularity), not by ModernBERT, the
+truncation-free data pipeline (ADR-011), or the task's inherent difficulty.
+Matching the actual SOTA recipe rather than a plausible-sounding but
+independently-designed BIO variant was the key correction.
+
+**Status:** Complete. Track B (binary token classification) adopted as the
+project's best-performing model. Model published at
+hugoomezz/modernbert-ragtruth-token-level-binary.
