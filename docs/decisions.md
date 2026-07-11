@@ -431,7 +431,7 @@ LettuceDetect SOTA recipe referenced throughout this project's research.
 **Status:** Response-level comparison complete. Track B (token-level, ModernBERT)
 planned next.
 
-## ADR-014: Baseline y_score = max over sentences of max(contradiction, 1 - entailment)
+## ADR-015: Baseline y_score = max over sentences of max(contradiction, 1 - entailment)
 
 **Context:** Phase 4's unified comparison needs one probability-like score per response
 from every system. Fine-tuned classifiers provide softmax P(hallucinated) directly, but
