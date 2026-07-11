@@ -166,9 +166,7 @@ def flatten_token_labels(label_sequences: list[list[int]]) -> np.ndarray:
     return flat[flat != IGNORE_LABEL]
 
 
-def merge_predicted_spans(
-    pred_row, label_row, token_starts: list[int], token_ends: list[int]
-) -> list[tuple[int, int]]:
+def merge_predicted_spans(pred_row, label_row, token_starts: list[int], token_ends: list[int]) -> list[tuple[int, int]]:
     """Merge consecutive positive-token predictions into character-level spans.
 
     Mirrors LettuceDetect's span builder: walking response positions (label != -100) in
