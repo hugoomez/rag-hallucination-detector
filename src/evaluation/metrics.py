@@ -51,3 +51,64 @@ def response_level_metrics(y_true, y_pred) -> dict:
             y_true, y_pred, labels=[0, 1], target_names=TARGET_NAMES, output_dict=True, zero_division=0
         ),
     }
+
+
+def load_predictions(path: Path | str = UNIFIED_PREDICTIONS_PATH) -> pd.DataFrame:
+    """Read the unified predictions parquet, validating the required columns exist."""
+    df = pd.read_parquet(path)
+    missing = [column for column in UNIFIED_COLUMNS if column not in df.columns]
+    if missing:
+        raise ValueError(f"Unified predictions file {path} is missing columns {missing}")
+    return df
+
+
+def system_predictions(df: pd.DataFrame, system: str) -> pd.DataFrame:
+    """Filter the unified table to one system's rows; error if the system is absent."""
+    subset = df[df["system"] == system]
+    if subset.empty:
+        available = sorted(df["system"].unique())
+        raise ValueError(f"No rows for system {system!r}; available systems: {available}")
+    return subset
+
+
+def metrics_for_system(df: pd.DataFrame, system: str) -> dict:
+    """Response-level metrics for one system out of the unified table."""
+    subset = system_predictions(df, system)
+    return response_level_metrics(subset["y_true"].to_numpy(), subset["y_pred"].to_numpy())
+
+
+def pr_curve_for_system(df: pd.DataFrame, system: str) -> dict:
+    """Precision-recall curve data (threshold-free) for one system, from y_score.
+
+    Returns sklearn's arrays as-is: precision and recall have len(thresholds) + 1
+    entries (the final (1, 0) point has no threshold). y_score semantics: higher =
+    more likely hallucinated.
+    """
+    subset = system_predictions(df, system)
+    precision, recall, thresholds = precision_recall_curve(
+        subset["y_true"].to_numpy(), subset["y_score"].to_numpy(), pos_label=1
+    )
+    return {"precision": precision, "recall": recall, "thresholds": thresholds}
+
+
+def comparison_table(df: pd.DataFrame, systems: list[str] | None = None) -> pd.DataFrame:
+    """One summary row (n/precision/recall/f1) per system — the Phase 4 comparison loop.
+
+    systems=None uses every system present, in first-appearance order (so the table
+    reads in collection order); pass an explicit list to control ordering.
+    """
+    if systems is None:
+        systems = list(dict.fromkeys(df["system"]))
+    rows = []
+    for system in systems:
+        system_metrics = metrics_for_system(df, system)
+        rows.append(
+            {
+                "system": system,
+                "n": system_metrics["n"],
+                "precision": system_metrics["precision"],
+                "recall": system_metrics["recall"],
+                "f1": system_metrics["f1"],
+            }
+        )
+    return pd.DataFrame(rows)
