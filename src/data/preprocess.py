@@ -33,16 +33,12 @@ def normalize_context(row: pd.Series) -> str:
         try:
             return f"Question: {source_info['question']}\n\nPassages: {source_info['passages']}"
         except (KeyError, TypeError) as e:
-            raise ValueError(
-                f"source_id={source_id}: malformed QA source_info ({e!r}): {source_info!r}"
-            ) from e
+            raise ValueError(f"source_id={source_id}: malformed QA source_info ({e!r}): {source_info!r}") from e
     elif task_type == "Data2txt":
         try:
             return json.dumps(source_info, ensure_ascii=False)
         except TypeError as e:
-            raise ValueError(
-                f"source_id={source_id}: malformed Data2txt source_info ({e!r}): {source_info!r}"
-            ) from e
+            raise ValueError(f"source_id={source_id}: malformed Data2txt source_info ({e!r}): {source_info!r}") from e
     else:
         raise ValueError(f"source_id={source_id}: unknown task_type: {task_type}")
 
@@ -87,9 +83,7 @@ def filter_oversized_responses(merged_df: pd.DataFrame, tokenizer, max_length: i
     return merged_df.loc[~oversized].reset_index(drop=True)
 
 
-def truncate_and_tokenize(
-    source_id, context: str, response: str, tokenizer, max_length: int = MAX_LENGTH
-) -> dict:
+def truncate_and_tokenize(source_id, context: str, response: str, tokenizer, max_length: int = MAX_LENGTH) -> dict:
     """Tokenize (context, response) as a pair, always keeping the full response.
 
     Only the context is truncated, and only from the end (head truncation: the
@@ -140,7 +134,9 @@ def compute_label_response(row: pd.Series) -> int:
     """
     labels = row["labels"]
     if not isinstance(labels, list):
-        print(f"Warning: source_id={row['source_id']} has missing/non-list labels ({labels!r}); treating as empty list.")
+        print(
+            f"Warning: source_id={row['source_id']} has missing/non-list labels ({labels!r}); treating as empty list."
+        )
         labels = []
     return int(len(labels) > 0)
 

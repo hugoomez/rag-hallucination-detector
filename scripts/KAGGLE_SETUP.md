@@ -16,7 +16,16 @@ sweep feasible. This is the exact setup to run it.
 
 ## 2. Clone the repo and install dependencies
 
-In the first notebook cell:
+Cell 0 — upgrade pip first. Kaggle's base image pip can be old enough to fail on
+Python 3.12 (old pip imports the removed `distutils` module internally), which
+breaks installing `seqeval` and other packages in `requirements.txt` — this is
+unrelated to any package itself:
+
+```bash
+!pip install --upgrade pip
+```
+
+Then, in the next cell:
 
 ```bash
 !git clone --branch feature/phase-2-nli-baseline-impl \

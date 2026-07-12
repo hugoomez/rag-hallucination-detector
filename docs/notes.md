@@ -146,3 +146,27 @@ longer a valid probability distribution (won't sum to 1 with the implied neutral
 it's two independent signals, not one sentence's full output — but this is necessary
 and correct for the aggregation to actually catch contradictions.
 
+## Track B — token-level BIO preprocessing verified
+
+`preprocess_token_level.py`'s alignment diagnostic was visually confirmed correct
+across 6 sample rows on the real Kaggle run, including edge cases: a
+subword-split span ("Wi-Fi," -> 4 separate tokens, all correctly tagged
+B-HALL/I-HALL), a 24-token-long span (a full sentence), and a zero-hallucination
+row (all tokens O, confirming the negative case). Consistent with ADR-011,
+truncation was 0.00% across all three splits and task_types for the token-level
+pipeline as well. Rough character-based class-balance estimate (Option A
+diagnostic, pre-tokenization): ~94.7% O tokens vs. ~5.3% B-HALL+I-HALL combined
+-- expect real token-level class weighting to matter significantly more here
+than it did for response-level classification.
+
+## Phase 4 — minor inference nondeterminism note
+
+When recomputing Track A / Approach 1 metrics from freshly-collected predictions
+(for the unified comparison table) versus the original Kaggle training run's
+test-set evaluation, Approach 1's F1 differs by 0.0004 (0.72537 vs. published
+0.72573) — traced to exactly one borderline example flipping from true negative
+to false positive (recall, TP, and FN counts are identical; only this single
+example's discrete prediction differs). Consistent with expected GPU inference
+nondeterminism (batch composition / kernel selection), not a data or pipeline
+bug. Considered acceptable noise; not investigated further.
+
