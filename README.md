@@ -66,33 +66,33 @@ the raw RAGTruth data).
 
 ## Results (RAGTruth test set, response-level)
 
-| Approach | Precision | Recall | F1 |
-|---|---|---|---|
-| Always "hallucinated" (trivial) | 0.349 | 1.000 | 0.518 |
-| Random | 0.350 | 0.497 | 0.411 |
-| NLI zero-shot (DeBERTa-v3-base, MoritzLaurer checkpoint) | 0.355 | 0.998 | 0.523 |
-| Fine-tuned DeBERTa-v3-base (Track A) | 0.737 | 0.688 | 0.712 |
-| Fine-tuned ModernBERT-base (Approach 1) | 0.6839 | 0.7731 | 0.7257 |
-| **Fine-tuned ModernBERT, binary token classification (Track B)** | 0.7856 | 0.7381 | 0.7611 |
+All four systems are evaluated on identical footing: per-row test predictions for
+every system live in `results/unified_predictions.parquet` (written by
+`scripts/collect_predictions.py`), and every number below comes from
+`comparison_table()` in `src/evaluation/metrics.py`. Positive class = hallucinated;
+n = 2,700 responses (943 hallucinated, 1,757 faithful).
+
+| System | Precision | Recall | F1 | Accuracy |
+|---|---|---|---|---|
+| Always "hallucinated" (trivial) | 0.3493 | 1.0000 | 0.5177 | 0.3493 |
+| Random 50/50 (expected) | 0.3493 | 0.5000 | 0.4113 | 0.5000 |
+| NLI zero-shot (DeBERTa-v3-base, MoritzLaurer checkpoint) | 0.3547 | 0.9979 | 0.5234 | 0.3652 |
+| Fine-tuned DeBERTa-v3-base (Track A) | 0.7367 | 0.6882 | 0.7116 | 0.8052 |
+| Fine-tuned ModernBERT-base (Approach 1) | 0.6832 | 0.7731 | 0.7254 | 0.7956 |
+| **Fine-tuned ModernBERT, binary token classification (Track B)** | **0.7873** | **0.7381** | **0.7619** | **0.8389** |
+
+**Track B is the best-performing system**, and it matches LettuceDetect-base's
+published example-level F1 of 76.07% on the same benchmark
+([arXiv:2502.17125](https://arxiv.org/abs/2502.17125)): 76.19% in this unified
+evaluation (76.11% under [ADR-014](docs/decisions.md)'s original evaluation, within
+0.04 points of published). See [ADR-013](docs/decisions.md) for the recipe redesign
+that got it there and [ADR-014](docs/decisions.md) for the validation.
+
+![Track B confusion matrix](results/confusion_matrix_track_b_modernbert.png)
+![Precision-recall comparison across all four systems](results/pr_curve_comparison.png)
 
 Fine-tuned models: [hugoomezz/deberta-v3-ragtruth-hallucination](https://huggingface.co/hugoomezz/deberta-v3-ragtruth-hallucination),
 [hugoomezz/modernbert-ragtruth-token-level-binary](https://huggingface.co/hugoomezz/modernbert-ragtruth-token-level-binary)
-
-**Per task_type (test set), zero-shot NLI baseline:**
-
-| task_type | Precision | Recall | F1 |
-|---|---|---|---|
-| Summary | 0.227 | 1.000 | 0.370 |
-| QA | 0.185 | 0.988 | 0.311 |
-| Data2txt | 0.643 | 1.000 | 0.783 |
-
-**Per task_type (test set), fine-tuned Track A vs. ModernBERT Approach 1:**
-
-| task_type | Track A Precision | Track A Recall | Track A F1 | ModernBERT Precision | ModernBERT Recall | ModernBERT F1 | Track B Precision | Track B Recall | Track B F1 |
-|---|---|---|---|---|---|---|---|---|---|
-| Summary | 0.515 | 0.245 | 0.332 | 0.460 | 0.569 | 0.509 | 0.614 | 0.436 | 0.510 |
-| QA | 0.533 | 0.650 | 0.586 | 0.524 | 0.681 | 0.592 | 0.625 | 0.688 | 0.655 |
-| Data2txt | 0.840 | 0.855 | 0.848 | 0.832 | 0.870 | 0.851 | 0.880 | 0.858 | 0.869 |
 
 The zero-shot NLI baseline (F1 0.523) barely outperforms the trivial "always
 hallucinated" baseline (F1 0.518): with recall ≈1.0 it flags almost everything, so
@@ -164,4 +164,70 @@ published **55.44%**, and a response-level F1 of 76.11% vs. their published
 76.07% — functionally equivalent at the response level. See
 [ADR-013](docs/decisions.md) for the diagnosis and redesign, and
 [ADR-014](docs/decisions.md) for the validated results.
+
+### Error analysis
+
+[`notebooks/03_error_analysis.ipynb`](notebooks/03_error_analysis.ipynb) dissects the
+best system (Track B) row by row — confusion matrix, error categorization against the
+raw test-set text, qualitative examples, and threshold sensitivity. Five takeaways:
+
+1. **The headline F1 (0.762) is an average over very different tasks.** Data2txt is
+   close to solved (F1 0.869), while Summary is the weak spot (F1 0.513, recall
+   0.436) — the model misses more than half of all hallucinated summaries. Any claim
+   about this detector needs a task-type qualifier.
+2. **The model is overconfident, not paranoid.** It misses 26.2% of hallucinated
+   responses but false-alarms on only 10.7% of faithful ones (247 FN vs 188 FP). The
+   token-level decision rule — flag only if some token crosses P(hallucinated) ≥ 0.5 —
+   structurally favors silence over alarm: diffuse suspicion never triggers.
+3. **Context length is a task-mix confound, not a real driver — and truncation is
+   ruled out.** The apparent FN-rate swing across context-length quartiles
+   (16.5%–46.8%) disappears within a task (each quartile is dominated by a different
+   task type); the longest model-visible sequence is 2,388 tokens against the
+   4,096-token window, so no test row was truncated.
+4. **Subtle hallucinations from the strongest generators are the hardest case.**
+   Responses annotated only with "Subtle" span types are missed 40.3% of the time (vs
+   27.0% for evident-only), and detection F1 drops to ≈0.48–0.52 on GPT-3.5/GPT-4
+   outputs, where hallucinations are rare and subtle — exactly the deployment
+   scenario that matters most.
+5. **The decision threshold is a product decision, and one model serves both modes.**
+   F1 is nearly flat across thresholds 0.2–0.7, so the same checkpoint supports a
+   high-precision **block mode** (t = 0.9: precision 0.879, recall 0.602 — ~1 in 8
+   blocks is a mistake, but 4 in 10 hallucinations get through) and a high-recall
+   **warn mode** (t = 0.1: recall 0.843, precision 0.642 — ~5 in 6 hallucinations
+   caught, ~1 in 3 warnings unnecessary). Even at the most aggressive setting ~16% of
+   hallucinations slip through: a risk reducer, not a guarantee.
+
+Two illustrative cases from the notebook (gold-annotated hallucinated spans marked
+`**[[...]]**`; the notebook has five, with full contexts):
+
+**Caught — true positive at y_score 1.00** (QA, llama-2-70b-chat, gold: Evident +
+Subtle Baseless Info). Asked *"how to plan a trip to germany"* over passages about
+budget tips, pet travel, and culture, the generator padded its list with advice from
+nowhere, and the detector flagged it:
+
+> 5. Check visa requirements: Make sure you have the necessary documents and visas
+> required for entry into Germany, if applicable.
+> **[[6. Pack appropriately: Germany can get quite chilly, especially in the winter
+> months, so pack warm clothing and comfortable shoes for sightseeing.
+> 7. Use travel apps: Utilize travel apps like Google Maps or Rome2rio to plan your
+> itinerary and navigate through German cities.]]**
+> 8. Learn some basic German phrases: While many Germans speak English fluently, it's
+> always appreciated when visitors make an effort to speak the local language.
+> **[[Learning basic phrases like "hello" (Hallo), "thank you" (Danke), and "excuse
+> me" (Entschuldigung)]]** can go a long way [...]
+
+**Missed — false negative at y_score 0.004** (Data2txt, gpt-4-0613, gold: Subtle
+Baseless Info). Summarizing a Yelp-style business record, GPT-4 added plausible
+glosses that appear nowhere in the structured data, and the detector saw almost
+nothing wrong:
+
+> Radio Prophets is a **[[well-regarded local business]]** based in Santa Barbara, CA
+> that offers a wide range of services such as music performances, event planning,
+> and wedding planning. [...] The band also takes pride in their efficient
+> communication, easy planning, and their **[[ability to make memorable events for
+> their clients]]**. Street parking is available and the venue also offers outdoor
+> seating.
+
+This pair is the model's temperament in miniature: confident, list-padding fabrication
+gets caught; smooth, plausible-sounding embellishment of real facts slips through.
 
