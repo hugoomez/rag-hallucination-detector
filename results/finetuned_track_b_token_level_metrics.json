@@ -1,0 +1,91 @@
+{
+  "model_name": "answerdotai/ModernBERT-base",
+  "hyperparameters": {
+    "learning_rate": 2e-05,
+    "per_device_train_batch_size": 4,
+    "num_train_epochs": 8.0,
+    "warmup_ratio": 0.1,
+    "weight_decay": 0.01,
+    "seed": 42,
+    "class_weight_cap": null,
+    "class_weights": null,
+    "gradient_accumulation_steps": 4,
+    "gradient_checkpointing": true,
+    "attn_implementation": "sdpa"
+  },
+  "counts": {
+    "train_rows": 13578,
+    "val_rows": 1512,
+    "test_rows": 2700,
+    "train_token_labels": {
+      "supported": 2164965,
+      "hallucinated": 126646
+    }
+  },
+  "val": {
+    "span_char_level": {
+      "precision": 0.6007179653591855,
+      "recall": 0.43897559023609445,
+      "f1": 0.5072658611565436
+    },
+    "response_level_derived": {
+      "accuracy": 0.8194444444444444,
+      "precision": 0.8239202657807309,
+      "recall": 0.7481146304675717,
+      "f1": 0.7841897233201581
+    },
+    "span_exact_match": {
+      "precision": 0.15010570824524314,
+      "recall": 0.17303005686433795,
+      "f1": 0.16075471698113208
+    }
+  },
+  "test": {
+    "span_char_level": {
+      "precision": 0.605672461116194,
+      "recall": 0.44244591663246763,
+      "f1": 0.5113493149756753
+    },
+    "response_level_derived": {
+      "accuracy": 0.8381481481481482,
+      "precision": 0.7855530474040632,
+      "recall": 0.7380699893955461,
+      "f1": 0.761071623838163
+    },
+    "span_exact_match": {
+      "precision": 0.14061683220073184,
+      "recall": 0.18041582830315225,
+      "f1": 0.15804935370152762
+    },
+    "always_hallucinated": {
+      "precision": 0.34925925925925927,
+      "recall": 1.0,
+      "f1": 0.5177051880318418
+    },
+    "random": {
+      "precision": 0.3497390007457122,
+      "recall": 0.4973488865323436,
+      "f1": 0.4106830122591944
+    },
+    "per_task_type": {
+      "Summary": {
+        "n": 900,
+        "precision": 0.6137931034482759,
+        "recall": 0.4362745098039216,
+        "f1": 0.5100286532951289
+      },
+      "QA": {
+        "n": 900,
+        "precision": 0.625,
+        "recall": 0.6875,
+        "f1": 0.6547619047619048
+      },
+      "Data2txt": {
+        "n": 900,
+        "precision": 0.879646017699115,
+        "recall": 0.8583765112262521,
+        "f1": 0.8688811188811189
+      }
+    }
+  }
+}

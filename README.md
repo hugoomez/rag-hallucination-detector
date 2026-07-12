@@ -8,6 +8,13 @@ Hallucination detector for RAG systems based on DeBERTa-v3 + NLI, trained on RAG
 
 🚧 Work in progress. See `docs/00-roadmap.md` for the implementation plan.
 
+## Setup
+
+```bash
+pip install --upgrade pip  # on fresh Python 3.12 environments, an old pip fails due to the removed distutils module — unrelated to any package in requirements.txt
+pip install -r requirements.txt
+```
+
 ## Dataset
 
 This project trains and evaluates on [RAGTruth](https://github.com/ParticleMedia/RAGTruth)
@@ -65,9 +72,11 @@ the raw RAGTruth data).
 | Random | 0.350 | 0.497 | 0.411 |
 | NLI zero-shot (DeBERTa-v3-base, MoritzLaurer checkpoint) | 0.355 | 0.998 | 0.523 |
 | Fine-tuned DeBERTa-v3-base (Track A) | 0.737 | 0.688 | 0.712 |
-| **Fine-tuned ModernBERT-base (Approach 1)** | 0.6839 | 0.7731 | 0.7257 |
+| Fine-tuned ModernBERT-base (Approach 1) | 0.6839 | 0.7731 | 0.7257 |
+| **Fine-tuned ModernBERT, binary token classification (Track B)** | 0.7856 | 0.7381 | 0.7611 |
 
-Fine-tuned model: [hugoomezz/deberta-v3-ragtruth-hallucination](https://huggingface.co/hugoomezz/deberta-v3-ragtruth-hallucination)
+Fine-tuned models: [hugoomezz/deberta-v3-ragtruth-hallucination](https://huggingface.co/hugoomezz/deberta-v3-ragtruth-hallucination),
+[hugoomezz/modernbert-ragtruth-token-level-binary](https://huggingface.co/hugoomezz/modernbert-ragtruth-token-level-binary)
 
 **Per task_type (test set), zero-shot NLI baseline:**
 
@@ -79,11 +88,11 @@ Fine-tuned model: [hugoomezz/deberta-v3-ragtruth-hallucination](https://huggingf
 
 **Per task_type (test set), fine-tuned Track A vs. ModernBERT Approach 1:**
 
-| task_type | Track A Precision | Track A Recall | Track A F1 | ModernBERT Precision | ModernBERT Recall | ModernBERT F1 |
-|---|---|---|---|---|---|---|
-| Summary | 0.515 | 0.245 | 0.332 | 0.460 | 0.569 | 0.509 |
-| QA | 0.533 | 0.650 | 0.586 | 0.524 | 0.681 | 0.592 |
-| Data2txt | 0.840 | 0.855 | 0.848 | 0.832 | 0.870 | 0.851 |
+| task_type | Track A Precision | Track A Recall | Track A F1 | ModernBERT Precision | ModernBERT Recall | ModernBERT F1 | Track B Precision | Track B Recall | Track B F1 |
+|---|---|---|---|---|---|---|---|---|---|
+| Summary | 0.515 | 0.245 | 0.332 | 0.460 | 0.569 | 0.509 | 0.614 | 0.436 | 0.510 |
+| QA | 0.533 | 0.650 | 0.586 | 0.524 | 0.681 | 0.592 | 0.625 | 0.688 | 0.655 |
+| Data2txt | 0.840 | 0.855 | 0.848 | 0.832 | 0.870 | 0.851 | 0.880 | 0.858 | 0.869 |
 
 The zero-shot NLI baseline (F1 0.523) barely outperforms the trivial "always
 hallucinated" baseline (F1 0.518): with recall ≈1.0 it flags almost everything, so
@@ -138,4 +147,21 @@ that architecture (ADR-012) — ModernBERT's long context helps the model *find*
 scattered evidence rather than making it less trigger-happy under uncertainty.
 Approach 1 is now the stronger response-level model; Track B (token-level span
 detection) is planned next on this ModernBERT backbone.
+
+### Track B: token-level span detection
+
+Track B's first training run used a 3-class BIO scheme and produced a near-total
+span-detection failure (0.037 seqeval F1). [ADR-013](docs/decisions.md) diagnosed
+the cause as an extreme 95x class weight on the ultra-rare B-HALL token fragmenting
+real spans, compounded by comparing against the wrong LettuceDetect metric, and
+redesigned the recipe to match LettuceDetect's actual approach (arXiv:2502.17125):
+binary token labels, unweighted loss, and character-overlap span evaluation instead
+of strict entity matching.
+
+That redesign closely matches published LettuceDetect-base numbers on the same
+benchmark: a span-level (char-overlap) F1 of **51.13%**, vs. LettuceDetect-base's
+published **55.44%**, and a response-level F1 of 76.11% vs. their published
+76.07% — functionally equivalent at the response level. See
+[ADR-013](docs/decisions.md) for the diagnosis and redesign, and
+[ADR-014](docs/decisions.md) for the validated results.
 
