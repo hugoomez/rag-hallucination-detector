@@ -25,16 +25,18 @@ class TestResponseLevelMetrics:
         assert result["precision"] == 1.0
         assert result["recall"] == 1.0
         assert result["f1"] == 1.0
+        assert result["accuracy"] == 1.0
         assert result["n"] == 4
         assert result["confusion_matrix"] == [[2, 0], [0, 2]]
 
     def test_known_mixed_case(self):
         # true: 1 1 1 0 0 0 ; pred: 1 1 0 1 0 0
-        # TP=2 FN=1 FP=1 TN=2 -> precision=2/3 recall=2/3 f1=2/3
+        # TP=2 FN=1 FP=1 TN=2 -> precision=2/3 recall=2/3 f1=2/3 accuracy=4/6
         result = response_level_metrics([1, 1, 1, 0, 0, 0], [1, 1, 0, 1, 0, 0])
         assert result["precision"] == pytest.approx(2 / 3)
         assert result["recall"] == pytest.approx(2 / 3)
         assert result["f1"] == pytest.approx(2 / 3)
+        assert result["accuracy"] == pytest.approx(4 / 6)
         assert result["confusion_matrix"] == [[2, 1], [1, 2]]
 
     def test_classification_report_is_dict_with_both_classes(self):
@@ -48,12 +50,14 @@ class TestResponseLevelMetrics:
         result = response_level_metrics([1, 0], [0, 0])
         assert result["precision"] == 0.0
         assert result["f1"] == 0.0
+        assert result["accuracy"] == 0.5
 
     def test_accepts_numpy_arrays(self):
         result = response_level_metrics(np.array([0, 1]), np.array([1, 1]))
         assert result["recall"] == 1.0
         # json-serializable output: plain python floats/ints/lists
         assert isinstance(result["precision"], float)
+        assert isinstance(result["accuracy"], float)
         assert isinstance(result["confusion_matrix"], list)
 
 
@@ -113,9 +117,15 @@ class TestPrCurve:
 class TestComparisonTable:
     def test_one_row_per_system(self):
         table = comparison_table(make_unified_df())
-        assert list(table.columns) == ["system", "n", "precision", "recall", "f1"]
+        assert list(table.columns) == ["system", "n", "precision", "recall", "f1", "accuracy"]
         assert sorted(table["system"]) == ["sys_never", "sys_perfect"]
         assert (table["n"] == 4).all()
+
+    def test_accuracy_column_values(self):
+        table = comparison_table(make_unified_df()).set_index("system")
+        assert table.loc["sys_perfect", "accuracy"] == 1.0
+        # sys_never: y_true=[0,1,0,1], y_pred=[0,0,0,0] -> 2/4 correct
+        assert table.loc["sys_never", "accuracy"] == 0.5
 
     def test_explicit_system_order_is_respected(self):
         table = comparison_table(make_unified_df(), systems=["sys_never", "sys_perfect"])

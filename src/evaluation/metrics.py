@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pandas as pd
 from sklearn.metrics import (
+    accuracy_score,
     classification_report,
     confusion_matrix,
     precision_recall_curve,
@@ -33,10 +34,11 @@ TARGET_NAMES = ["not_hallucinated", "hallucinated"]
 def response_level_metrics(y_true, y_pred) -> dict:
     """Binary response-level metrics with hallucinated (1) as the positive class.
 
-    Returns a json-serializable dict: n, precision, recall, f1, confusion_matrix
-    (2x2 nested list, rows = true 0/1, cols = predicted 0/1), classification_report
-    (nested dict). zero_division=0 so degenerate prediction vectors (e.g. a system
-    that never predicts positive) report 0.0 rather than raising or returning NaN.
+    Returns a json-serializable dict: n, precision, recall, f1, accuracy,
+    confusion_matrix (2x2 nested list, rows = true 0/1, cols = predicted 0/1),
+    classification_report (nested dict). zero_division=0 so degenerate prediction
+    vectors (e.g. a system that never predicts positive) report 0.0 rather than
+    raising or returning NaN.
     """
     precision, recall, f1, _ = precision_recall_fscore_support(
         y_true, y_pred, average="binary", pos_label=1, zero_division=0
@@ -46,6 +48,7 @@ def response_level_metrics(y_true, y_pred) -> dict:
         "precision": float(precision),
         "recall": float(recall),
         "f1": float(f1),
+        "accuracy": float(accuracy_score(y_true, y_pred)),
         "confusion_matrix": confusion_matrix(y_true, y_pred, labels=[0, 1]).tolist(),
         "classification_report": classification_report(
             y_true, y_pred, labels=[0, 1], target_names=TARGET_NAMES, output_dict=True, zero_division=0
@@ -92,7 +95,7 @@ def pr_curve_for_system(df: pd.DataFrame, system: str) -> dict:
 
 
 def comparison_table(df: pd.DataFrame, systems: list[str] | None = None) -> pd.DataFrame:
-    """One summary row (n/precision/recall/f1) per system — the Phase 4 comparison loop.
+    """One summary row (n/precision/recall/f1/accuracy) per system — the Phase 4 comparison loop.
 
     systems=None uses every system present, in first-appearance order (so the table
     reads in collection order); pass an explicit list to control ordering.
@@ -109,6 +112,7 @@ def comparison_table(df: pd.DataFrame, systems: list[str] | None = None) -> pd.D
                 "precision": system_metrics["precision"],
                 "recall": system_metrics["recall"],
                 "f1": system_metrics["f1"],
+                "accuracy": system_metrics["accuracy"],
             }
         )
     return pd.DataFrame(rows)
