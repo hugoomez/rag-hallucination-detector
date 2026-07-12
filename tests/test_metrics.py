@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.evaluation import metrics
 from src.evaluation.metrics import (
     UNIFIED_COLUMNS,
     comparison_table,
@@ -73,7 +72,9 @@ def make_unified_df() -> pd.DataFrame:
         "split": ["test"] * 4,
         "y_true": [0, 1, 0, 1],
     }
-    perfect = pd.DataFrame({"system": ["sys_perfect"] * 4, **base, "y_pred": [0, 1, 0, 1], "y_score": [0.1, 0.9, 0.2, 0.8]})
+    perfect = pd.DataFrame(
+        {"system": ["sys_perfect"] * 4, **base, "y_pred": [0, 1, 0, 1], "y_score": [0.1, 0.9, 0.2, 0.8]}
+    )
     never = pd.DataFrame({"system": ["sys_never"] * 4, **base, "y_pred": [0, 0, 0, 0], "y_score": [0.4, 0.3, 0.2, 0.1]})
     return pd.concat([perfect, never], ignore_index=True)[UNIFIED_COLUMNS]
 
