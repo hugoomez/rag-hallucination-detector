@@ -12,7 +12,7 @@ def test_truncate_and_tokenize_preserves_short_response_with_long_context():
     short_response = "The answer is yes."
     max_length = 512
 
-    result = truncate_and_tokenize(long_context, short_response, tokenizer, max_length=max_length)
+    result = truncate_and_tokenize(11845, long_context, short_response, tokenizer, max_length=max_length)
 
     assert result["was_truncated"] is True
     assert len(result["input_ids"]) <= max_length
