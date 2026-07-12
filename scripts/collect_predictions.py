@@ -20,6 +20,13 @@ Modes:
                 softmax P(hallucinated) per row.
     approach_1  Same, over data/processed/response_level_modernbert_test.parquet
                 (regenerate via `python -m src.data.preprocess_modernbert` if absent).
+    track_b_modernbert
+                Token-classification inference (AutoModelForTokenClassification) over
+                data/processed/token_level_binary_test.parquet. y_true/y_pred collapse
+                token predictions to response level via train_token_level.derive_response_labels
+                (any positive token -> hallucinated); y_score is the max per-token
+                P(hallucinated) over the response's real tokens (see collect_track_b_modernbert
+                for the derivation rationale).
     merge       Fold a unified-schema parquet produced elsewhere (e.g. downloaded from a
                 Kaggle session) into the local accumulating file.
 
@@ -27,6 +34,7 @@ Examples:
     python scripts/collect_predictions.py baseline
     python scripts/collect_predictions.py track_a
     python scripts/collect_predictions.py approach_1
+    python scripts/collect_predictions.py track_b_modernbert
     python scripts/collect_predictions.py merge --input kaggle_output/unified_predictions.parquet
 """
 
@@ -43,24 +51,35 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 import torch  # noqa: E402
 from torch.utils.data import DataLoader  # noqa: E402
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, DataCollatorWithPadding  # noqa: E402
+from transformers import (  # noqa: E402
+    AutoModelForSequenceClassification,
+    AutoModelForTokenClassification,
+    AutoTokenizer,
+    DataCollatorForTokenClassification,
+    DataCollatorWithPadding,
+)
 
+from src.data.preprocess_token_level import HALLUCINATED_LABEL, IGNORE_LABEL  # noqa: E402
 from src.evaluation.metrics import UNIFIED_COLUMNS, UNIFIED_PREDICTIONS_PATH, response_level_metrics  # noqa: E402
 from src.models.nli_baseline import apply_thresholds  # noqa: E402
+from src.models.train_token_level import derive_response_labels  # noqa: E402
 
 SYSTEM_BASELINE = "baseline_nli"
 SYSTEM_TRACK_A = "track_a_deberta"
 SYSTEM_APPROACH_1 = "approach_1_modernbert"
+SYSTEM_TRACK_B = "track_b_modernbert"
 
 NLI_SCORES_PATH = Path("results/nli_scores_test.json")
 BASELINE_METRICS_PATH = Path("results/baseline_nli_metrics.json")
 HUB_DEFAULTS = {
     SYSTEM_TRACK_A: "hugoomezz/deberta-v3-ragtruth-hallucination",
     SYSTEM_APPROACH_1: "hugoomezz/deberta-v3-modernbert-ragtruth-hallucination",
+    SYSTEM_TRACK_B: "hugoomezz/modernbert-ragtruth-token-level-binary",
 }
 TEST_PATH_DEFAULTS = {
     SYSTEM_TRACK_A: "data/processed/response_level_test.parquet",
     SYSTEM_APPROACH_1: "data/processed/response_level_modernbert_test.parquet",
+    SYSTEM_TRACK_B: "data/processed/token_level_binary_test.parquet",
 }
 BATCH_SIZE = 32
 
@@ -222,15 +241,114 @@ def collect_transformer(system: str, hub_model_id: str, test_path: str, limit: i
     )
 
 
-MODE_TO_SYSTEM = {"track_a": SYSTEM_TRACK_A, "approach_1": SYSTEM_APPROACH_1}
+def load_token_test_df(path: str) -> pd.DataFrame:
+    """Read a token-level binary test parquet; input_ids/attention_mask/labels are per-token."""
+    df = pd.read_parquet(path)
+    for column in ("input_ids", "attention_mask", "labels"):
+        df[column] = df[column].apply(lambda a: np.asarray(a).tolist())
+    return df
+
+
+def run_token_inference_with_probs(
+    df: pd.DataFrame, model, collator, device: torch.device
+) -> tuple[list[int], list[int], list[float]]:
+    """Batched token-classification forward pass, collapsed to one row per response.
+
+    DataCollatorForTokenClassification pads labels with IGNORE_LABEL (-100, its default
+    label_pad_token_id), so padding positions are excluded by the same mask that already
+    excludes context/special tokens -- one mask does both jobs. y_true/y_pred reuse
+    derive_response_labels verbatim (row-independent, so calling it per batch and
+    concatenating is identical to calling it once over the full split). y_score is the
+    max per-token P(hallucinated) over each response's real tokens.
+    """
+    examples = [
+        {"input_ids": row.input_ids, "attention_mask": row.attention_mask, "labels": row.labels}
+        for row in df.itertuples()
+    ]
+    loader = DataLoader(examples, batch_size=BATCH_SIZE, shuffle=False, collate_fn=collator)
+
+    model.eval()
+    y_true: list[int] = []
+    y_pred: list[int] = []
+    y_score: list[float] = []
+    with torch.no_grad():
+        for batch in loader:
+            labels = batch.pop("labels").numpy()
+            batch = {key: value.to(device) for key, value in batch.items()}
+            logits = model(**batch).logits  # (batch, seq, 2)
+            probs = torch.softmax(logits, dim=-1)[..., HALLUCINATED_LABEL].cpu().numpy()
+            preds = logits.argmax(dim=-1).cpu().numpy()
+
+            batch_true, batch_pred = derive_response_labels(labels, preds)
+            y_true.extend(batch_true)
+            y_pred.extend(batch_pred)
+
+            mask = labels != IGNORE_LABEL
+            for row_probs, row_mask in zip(probs, mask):
+                masked = row_probs[row_mask]
+                # Vacuously not-hallucinated if a row somehow has zero real tokens,
+                # matching ADR-015's empty-response convention for the baseline's y_score.
+                y_score.append(float(masked.max()) if masked.size else 0.0)
+    return y_true, y_pred, y_score
+
+
+def collect_track_b_modernbert(
+    hub_model_id: str, test_path: str, limit: int | None = None, tokenizer_id: str | None = None
+) -> pd.DataFrame:
+    """Hub-checkpoint token-classification inference over the binary token-level test parquet.
+
+    Unlike track_a/approach_1 (AutoModelForSequenceClassification, one label per response),
+    Track B is AutoModelForTokenClassification: one supported(0)/hallucinated(1) label per
+    real response token, -100 elsewhere (ADR-013). y_true/y_pred collapse to response level
+    via train_token_level.derive_response_labels (any positive token -> hallucinated),
+    reused verbatim rather than reimplemented so this always matches the training-time
+    definition exactly.
+
+    y_score = max per-token P(hallucinated) over the response's real tokens. This is the
+    direct continuous relaxation of the same any-positive decision rule: thresholding the
+    max at 0.5 recovers y_pred exactly (argmax-positive at some token iff that token's
+    P(hallucinated) >= 0.5), the same way ADR-015 derived the baseline's y_score as a
+    one-dimensional reduction of its own disjunctive flag rule. A mean-over-tokens score
+    was considered and rejected: it would decouple the score from the rule it's meant to
+    relax, since a response with one high-confidence hallucinated token among many
+    confidently-supported tokens should score high, not get diluted by the majority.
+    """
+    df = load_token_test_df(test_path)
+    if limit is not None:
+        df = df.head(limit)
+    print(f"{SYSTEM_TRACK_B}: {len(df)} rows from {test_path}", flush=True)
+
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_id or hub_model_id)
+    collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
+    model = AutoModelForTokenClassification.from_pretrained(hub_model_id)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    print(f"Loaded {hub_model_id} on {device}", flush=True)
+
+    y_true, y_pred, y_score = run_token_inference_with_probs(df, model, collator, device)
+    return build_prediction_rows(
+        system=SYSTEM_TRACK_B,
+        source_ids=df["source_id"].tolist(),
+        task_types=df["task_type"].tolist(),
+        y_true=y_true,
+        y_pred=y_pred,
+        y_score=y_score,
+    )
+
+
+MODE_TO_SYSTEM = {"track_a": SYSTEM_TRACK_A, "approach_1": SYSTEM_APPROACH_1, "track_b_modernbert": SYSTEM_TRACK_B}
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("mode", choices=["baseline", "track_a", "approach_1", "merge"])
+    parser.add_argument("mode", choices=["baseline", "track_a", "approach_1", "track_b_modernbert", "merge"])
     parser.add_argument("--unified_path", default=str(UNIFIED_PREDICTIONS_PATH))
-    parser.add_argument("--hub_model_id", help="Override the default Hub repo for track_a/approach_1.")
-    parser.add_argument("--test_path", help="Override the default test parquet for track_a/approach_1.")
+    parser.add_argument(
+        "--hub_model_id", help="Override the default Hub repo for track_a/approach_1/track_b_modernbert."
+    )
+    parser.add_argument(
+        "--test_path", help="Override the default test parquet for track_a/approach_1/track_b_modernbert."
+    )
     parser.add_argument(
         "--tokenizer_id",
         help="Override tokenizer repo for track_a/approach_1 (e.g. the base model, when the "
@@ -251,6 +369,13 @@ def main() -> None:
 
     if args.mode == "baseline":
         new_df = collect_baseline()
+    elif args.mode == "track_b_modernbert":
+        new_df = collect_track_b_modernbert(
+            hub_model_id=args.hub_model_id or HUB_DEFAULTS[SYSTEM_TRACK_B],
+            test_path=args.test_path or TEST_PATH_DEFAULTS[SYSTEM_TRACK_B],
+            limit=args.limit,
+            tokenizer_id=args.tokenizer_id,
+        )
     elif args.mode in MODE_TO_SYSTEM:
         system = MODE_TO_SYSTEM[args.mode]
         new_df = collect_transformer(
