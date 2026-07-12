@@ -146,3 +146,14 @@ longer a valid probability distribution (won't sum to 1 with the implied neutral
 it's two independent signals, not one sentence's full output — but this is necessary
 and correct for the aggregation to actually catch contradictions.
 
+## Phase 4 — minor inference nondeterminism note
+
+When recomputing Track A / Approach 1 metrics from freshly-collected predictions
+(for the unified comparison table) versus the original Kaggle training run's
+test-set evaluation, Approach 1's F1 differs by 0.0004 (0.72537 vs. published
+0.72573) — traced to exactly one borderline example flipping from true negative
+to false positive (recall, TP, and FN counts are identical; only this single
+example's discrete prediction differs). Consistent with expected GPU inference
+nondeterminism (batch composition / kernel selection), not a data or pipeline
+bug. Considered acceptable noise; not investigated further.
+
