@@ -84,13 +84,14 @@ class TestMergePredictions:
 
 class TestParseArgs:
     def test_tokenizer_id_default_none(self, monkeypatch):
-        import sys
         monkeypatch.setattr("sys.argv", ["collect_predictions.py", "approach_1"])
         args = cp.parse_args()
         assert args.tokenizer_id is None
 
     def test_tokenizer_id_override(self, monkeypatch):
-        import sys
-        monkeypatch.setattr("sys.argv", ["collect_predictions.py", "approach_1", "--tokenizer_id", "answerdotai/ModernBERT-base"])
+        monkeypatch.setattr(
+            "sys.argv",
+            ["collect_predictions.py", "approach_1", "--tokenizer_id", "answerdotai/ModernBERT-base"],
+        )
         args = cp.parse_args()
         assert args.tokenizer_id == "answerdotai/ModernBERT-base"
