@@ -1,0 +1,219 @@
+Georg Friedrich Bernhard Riemann (; German: [ˈɡeːɔʁk ˈfʁiːdʁɪç ˈbɛʁnhaʁt ˈʁiːman] ; 17 September 1826 – 20 July 1866) was a German mathematician who made profound contributions to analysis, number theory, and differential geometry. In the field of real analysis, he is mostly known for the first rigorous formulation of the integral, the Riemann integral, and his work on Fourier series. His contributions to complex analysis include most notably the introduction of Riemann surfaces, breaking new ground in a natural, geometric treatment of complex analysis. His 1859 paper on the prime-counting function, containing the original statement of the Riemann hypothesis, is regarded as a foundational paper of analytic number theory. Through his pioneering contributions to differential geometry, Riemann laid the foundations of the mathematics of general relativity. He is considered by many to be one of the greatest mathematicians of all time.
+
+
+== Biography ==
+
+
+=== Early years ===
+Riemann was born on 17 September 1826 in Breselenz, a village near Dannenberg in the Kingdom of Hanover. His father, Friedrich Bernhard Riemann, was a poor Lutheran pastor in Breselenz who fought in the Napoleonic Wars. His mother, Charlotte Ebell, died in 1846. Riemann was the second of six children. Riemann exhibited exceptional mathematical talent, such as calculation abilities, from an early age but suffered from timidity and a fear of speaking in public, and had frail health.
+
+
+=== Education ===
+During 1840, Riemann went to Hanover to live with his grandmother and attend lyceum (middle school years), because such a type of school was not accessible from his home village. After the death of his grandmother in 1842, he transferred to the Johanneum Lüneburg, a high school in Lüneburg. There, Riemann studied the Bible intensively, but he was often distracted by mathematics. His teachers were amazed by his ability to perform complicated mathematical operations, in which he often outstripped his instructor's knowledge. In 1846, at the age of 19, he started studying philology and Christian theology in order to become a pastor and help with his family's finances.
+During the spring of 1846, his father, after gathering enough money, sent Riemann to the University of Göttingen, where he planned to study towards a degree in theology. However, once there, he began studying mathematics under Carl Friedrich Gauss (specifically his lectures on the method of least squares). Gauss recommended that Riemann give up his theological work and enter the mathematical field; after getting his father's approval, Riemann transferred to the University of Berlin in 1847. During his time of study, Carl Gustav Jacob Jacobi, Peter Gustav Lejeune Dirichlet, Jakob Steiner, and Gotthold Eisenstein were teaching. He stayed in Berlin for two years and returned to Göttingen in 1849.
+
+
+=== Academia ===
+Riemann held his first lectures in 1854, which founded the field of Riemannian geometry and thereby set the stage for Albert Einstein's general theory of relativity. In 1857, there was an attempt to promote Riemann to extraordinary professor status at the University of Göttingen. Although this attempt failed, it did result in Riemann finally being granted a regular salary. In 1859, following the death of Dirichlet (who held Gauss's chair at the University of Göttingen), he was promoted to head the mathematics department at the University of Göttingen. He was also the first to suggest using dimensions higher than merely three or four in order to describe physical reality.
+
+
+=== Protestant family and death in Italy ===
+In 1862 he married Elise Koch; they had a daughter.
+Riemann fled Göttingen when the armies of Hanover and Prussia clashed there in 1866. He died of tuberculosis during his third journey to Italy in Selasca (now a hamlet of Verbania on Lake Maggiore), where he was buried in the cemetery in Biganzolo (Verbania).
+Riemann was a dedicated Christian, the son of a Protestant minister, and saw his life as a mathematician as another way to serve God. During his life, he held closely to his Christian faith and considered it to be the most important aspect of his life. At the time of his death, he was reciting the Lord's Prayer with his wife and died before they finished saying the prayer. Meanwhile, in Göttingen his housekeeper discarded some of the papers in his office, including much unpublished work. Riemann refused to publish incomplete work, and some deep insights may have been lost.
+
+
+== Riemannian geometry ==
+
+Riemann's published works opened up research areas combining analysis with geometry. These would subsequently become major parts of the theories of Riemannian geometry, algebraic geometry, and complex manifold theory. The theory of Riemann surfaces was elaborated by Felix Klein and particularly Adolf Hurwitz. This area of mathematics is part of the foundation of topology and is still being applied in novel ways to mathematical physics.
+In 1853, Gauss asked Riemann, his student, to prepare a Habilitationsschrift on the foundations of geometry. Over many months, Riemann developed his theory of higher dimensions and delivered his lecture at Göttingen on 10 June 1854, entitled Ueber die Hypothesen, welche der Geometrie zu Grunde liegen. It was not published until twelve years later in 1868 by Dedekind, two years after his death. Its early reception appears to have been slow, but it is now recognized as one of the most important works in geometry.
+The subject founded by this work is Riemannian geometry. Riemann found the correct way to extend into n dimensions the differential geometry of surfaces, which Gauss himself proved in his theorema egregium. The fundamental objects are called the Riemannian metric and the Riemann curvature tensor. For the surface (two-dimensional) case, the curvature at each point can be reduced to a number (scalar), with the surfaces of constant positive or negative curvature being models of the non-Euclidean geometries.
+The Riemann metric is a collection of numbers at every point in space (i.e., a tensor) which allows measurements of speed in any trajectory, whose integral gives the distance between the trajectory's endpoints. For example, Riemann found that in four spatial dimensions, one needs ten numbers at each point to describe distances and curvatures on a manifold, no matter how distorted it is.
+
+
+== Complex analysis ==
+In his dissertation, he established a geometric foundation for complex analysis through Riemann surfaces, through which multi-valued functions like the logarithm (with infinitely many sheets) or the square root (with two sheets) could become one-to-one functions. Complex functions are harmonic functions (that is, they satisfy Laplace's equation and thus the Cauchy–Riemann equations) on these surfaces and are described by the location of their singularities and the topology of the surfaces. The topological "genus" of the Riemann surfaces is given by 
+  
+    
+      
+        g
+        =
+        w
+        
+          /
+        
+        2
+        −
+        n
+        +
+        1
+      
+    
+    {\displaystyle g=w/2-n+1}
+  
+, where the surface has 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+ leaves coming together at 
+  
+    
+      
+        w
+      
+    
+    {\displaystyle w}
+  
+ branch points. For 
+  
+    
+      
+        g
+        >
+        1
+      
+    
+    {\displaystyle g>1}
+  
+ the Riemann surface has 
+  
+    
+      
+        (
+        3
+        g
+        −
+        3
+        )
+      
+    
+    {\displaystyle (3g-3)}
+  
+ parameters (the "moduli").
+His contributions to this area are numerous. The famous Riemann mapping theorem says that a simply connected domain in the complex plane is "biholomorphically equivalent" (i.e. there is a bijection between them that is holomorphic with a holomorphic inverse) to either 
+  
+    
+      
+        
+          C
+        
+      
+    
+    {\displaystyle \mathbb {C} }
+  
+ or to the interior of the unit circle. The generalization of the theorem to Riemann surfaces is the famous uniformization theorem, which was proved in the 19th century by Henri Poincaré and Felix Klein. Here, too, rigorous proofs were first given after the development of richer mathematical tools (in this case, topology). For the proof of the existence of functions on Riemann surfaces, he used a minimality condition, which he called the Dirichlet principle. Karl Weierstrass found a gap in the proof: Riemann had not noticed that his working assumption (that the minimum existed) might not work; the function space might not be complete, and therefore the existence of a minimum was not guaranteed. Through the work of David Hilbert  in the Calculus of Variations, the Dirichlet principle was finally established. Otherwise, Weierstrass was very impressed with Riemann, especially with his theory of abelian functions. When Riemann's work appeared, Weierstrass withdrew his paper from Crelle's Journal and did not publish it. They had a good understanding when Riemann visited him in Berlin in 1859. Weierstrass encouraged his student Hermann Amandus Schwarz to find alternatives to the Dirichlet principle in complex analysis, in which he was successful. An anecdote from Arnold Sommerfeld shows the difficulties which contemporary mathematicians had with Riemann's new ideas. In 1870, Weierstrass had taken Riemann's dissertation with him on a holiday to Rigi and complained that it was hard to understand. The physicist Hermann von Helmholtz assisted him in the work overnight and returned with the comment that it was "natural" and "very understandable".
+Other highlights include his work on abelian functions and theta functions on Riemann surfaces. Riemann had been in a competition with Weierstrass since 1857 to solve the Jacobian inverse problems for abelian integrals, a generalization of elliptic integrals. Riemann used theta functions in several variables and reduced the problem to the determination of the zeros of these theta functions. Riemann also investigated period matrices and characterized them through the "Riemannian period relations" (symmetric, real part negative). By Ferdinand Georg Frobenius and Solomon Lefschetz the validity of this relation is equivalent with the embedding of 
+  
+    
+      
+        
+          
+            C
+          
+          
+            n
+          
+        
+        
+          /
+        
+        Ω
+      
+    
+    {\displaystyle \mathbb {C} ^{n}/\Omega }
+  
+ (where 
+  
+    
+      
+        Ω
+      
+    
+    {\displaystyle \Omega }
+  
+ is the lattice of the period matrix) in a projective space by means of theta functions. For certain values of 
+  
+    
+      
+        n
+      
+    
+    {\displaystyle n}
+  
+, this is the Jacobian variety of the Riemann surface, an example of an abelian manifold.
+Many mathematicians such as Alfred Clebsch furthered Riemann's work on algebraic curves. These theories depended on the properties of a function defined on Riemann surfaces. For example, the Riemann–Roch theorem (Roch was a student of Riemann) says something about the number of linearly independent differentials (with known conditions on the zeros and poles) of a Riemann surface.
+According to Detlef Laugwitz, automorphic functions appeared for the first time in an essay about the Laplace equation on electrically charged cylinders. Riemann however used such functions for conformal maps (such as mapping topological triangles to the circle) in his 1859 lecture on hypergeometric functions or in his treatise on minimal surfaces.
+
+
+== Real analysis ==
+In the field of real analysis, he discovered the Riemann integral in his habilitation. Among other things, he showed that every piecewise continuous function is integrable. Similarly, the Stieltjes integral goes back to the Göttinger mathematician, and so they are named together in the Riemann–Stieltjes integral.
+In his habilitation work on Fourier series, where he followed the work of his teacher Dirichlet, he showed that Riemann-integrable functions are "representable" by Fourier series. Dirichlet had shown this for continuous, piecewise-differentiable functions (thus with countably many non-differentiable points). Riemann gave an example of a Fourier series representing a continuous, almost nowhere-differentiable function, a case not covered by Dirichlet.  He also proved the Riemann–Lebesgue lemma: if a function is representable by a Fourier series, then the Fourier coefficients go to zero for large n.
+Riemann's essay was also the starting point for Georg Cantor's work with Fourier series, which was the impetus for set theory.
+He also worked with hypergeometric differential equations in 1857 using complex analytical methods and presented the solutions through the behaviour of closed paths about singularities (described by the monodromy matrix). The proof of the existence of such differential equations by previously known monodromy matrices is one of the Hilbert problems.
+
+
+== Number theory ==
+Riemann made some famous contributions to modern analytic number theory. In a single short paper, the only one he published on the subject of number theory, he investigated the zeta function that now bears his name, establishing its importance for understanding the distribution of prime numbers. The Riemann hypothesis was one of a series of conjectures he made about the function's properties.
+In Riemann's work, there are many more interesting developments. He proved the functional equation for the zeta function (already known to Leonhard Euler), behind which a theta function lies. Through the summation of this approximation function over the non-trivial zeros on the line with real portion 1/2, he gave an exact, "explicit formula" for 
+  
+    
+      
+        π
+        (
+        x
+        )
+      
+    
+    {\displaystyle \pi (x)}
+  
+.
+Riemann knew of Pafnuty Chebyshev's work on the Prime Number Theorem. Chebyshev had visited Dirichlet in 1852.
+
+
+== Writings ==
+Riemann's works include:
+
+1851 – Grundlagen für eine allgemeine Theorie der Functionen einer veränderlichen complexen Grösse, Inaugural dissertation, Göttingen, 1851.
+1857 – Theorie der Abelschen Functionen, Journal für die reine und angewandte Mathematik, Bd. 54. S. 101–155.
+1859 – Über die Anzahl der Primzahlen unter einer gegebenen Größe, in: Monatsberichte der Preußischen Akademie der Wissenschaften. Berlin, November 1859, S. 671ff. With Riemann's conjecture. Über die Anzahl der Primzahlen unter einer gegebenen Grösse. (Wikisource), Facsimile of the manuscript Archived 2016-03-03 at the Wayback Machine with Clay Mathematics.
+1861 – Commentatio mathematica, qua respondere tentatur quaestioni ab Illma Academia Parisiensi propositae, submitted to the Paris Academy for a prize competition
+1867 – Über die Darstellbarkeit einer Function durch eine trigonometrische Reihe, Aus dem dreizehnten Bande der Abhandlungen der Königlichen Gesellschaft der Wissenschaften zu Göttingen.
+1868 – Über die Hypothesen, welche der Geometrie zugrunde liegen. Abh. Kgl. Ges. Wiss., Göttingen 1868. Translation EMIS, pdf On the hypotheses which lie at the foundation of geometry, translated by W.K.Clifford, Nature 8 1873 183 – reprinted in Clifford's Collected Mathematical Papers, London 1882 (MacMillan); New York 1968 (Chelsea) http://www.emis.de/classics/Riemann/. Also in Ewald, William B., ed., 1996 "From Kant to Hilbert: A Source Book in the Foundations of Mathematics", 2 vols. Oxford Uni. Press: 652–61.
+1876 – Bernhard Riemann's Gesammelte Mathematische Werke und wissenschaftlicher Nachlass. herausgegeben von Heinrich Weber unter Mitwirkung von Richard Dedekind, Leipzig, B. G. Teubner 1876, 2. Auflage 1892, Nachdruck bei Dover 1953 (with contributions by Max Noether and Wilhelm Wirtinger, Teubner 1902). Later editions The collected Works of Bernhard Riemann: The Complete German Texts. Eds. Heinrich Weber; Richard Dedekind; M Noether; Wilhelm Wirtinger; Hans Lewy. Mineola, New York: Dover Publications, Inc.,  1953, 1981, 2017
+1876 – Schwere, Elektrizität und Magnetismus, Hannover: Karl Hattendorff.
+1882 – Vorlesungen über Partielle Differentialgleichungen 3. Auflage. Braunschweig 1882.
+1901 – Die partiellen Differential-Gleichungen der mathematischen Physik nach Riemann's Vorlesungen. PDF on Wikimedia Commons. On archive.org: Riemann, Bernhard (1901). Weber, Heinrich Martin (ed.). "Die partiellen differential-gleichungen der mathematischen physik nach Riemann's Vorlesungen". archive.org. Friedrich Vieweg und Sohn. Retrieved 1 June 2022.
+2004 – Riemann, Bernhard (2004), Collected papers, Kendrick Press, Heber City, UT, ISBN 978-0-9740427-2-5, MR 2121437
+
+
+== See also ==
+List of things named after Bernhard Riemann
+Non-Euclidean geometry
+On the Number of Primes Less Than a Given Magnitude, Riemann's 1859 paper introducing the complex zeta function
+
+
+== References ==
+
+
+== Further reading ==
+Derbyshire, John (2003), Prime Obsession: Bernhard Riemann and the Greatest Unsolved Problem in Mathematics, Washington, DC: John Henry Press, ISBN 0-309-08549-7.
+Monastyrsky, Michael (1999), Riemann, Topology and Physics, Boston, MA: Birkhäuser, ISBN 0-8176-3789-3.
+Ji, Lizhen; Papadopoulos, Athanese; Yamada, Sumio, eds. (2017). From Riemann to Differential Geometry and Relativity. Springer. ISBN 9783319600390.
+
+
+== External links ==
+
+Bernhard Riemann at the Mathematics Genealogy Project
+The Mathematical Papers of Georg Friedrich Bernhard Riemann
+Riemann's publications at emis.de
+O'Connor, John J.; Robertson, Edmund F., "Bernhard Riemann", MacTutor History of Mathematics Archive, University of St Andrews
+Bernhard Riemann – one of the most important mathematicians
+Bernhard Riemann's inaugural lecture
+Weisstein, Eric Wolfgang (ed.). "Riemann, Bernhard (1826–1866)". ScienceWorld.
+Richard Dedekind (1892), Transcripted by  D. R. Wilkins, Riemanns biography.
+David E. Rowe: "Did Gauss Mentor Riemann?", Notices of AMS, Vol.73, No.2 (Feb., 2026)

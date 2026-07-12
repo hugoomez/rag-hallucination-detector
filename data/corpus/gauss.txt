@@ -1,0 +1,430 @@
+Johann Carl Friedrich Gauss ( ; German: Gauß; 30 April 1777 – 23 February 1855) was a German mathematician, astronomer, geodesist, and physicist, who contributed to many fields in mathematics and science. His mathematical contributions spanned the branches of number theory, algebra, analysis, geometry, statistics, and probability. Gauss was director of the Göttingen Observatory in Germany and professor of astronomy from 1807 until his death in 1855.
+From an early age, Gauss was known as a child prodigy in mathematics. While studying at the University of Göttingen, he propounded several mathematical theorems. As an independent scholar, he wrote the masterpieces Disquisitiones Arithmeticae and Theoria motus corporum coelestium. Gauss produced the second and third complete proofs of the fundamental theorem of algebra. He also introduced the triple bar symbol (≡) for congruence. In number theory, he made numerous contributions, such as the composition law, the law of quadratic reciprocity, and proved the triangular case of the Fermat polygonal number theorem. He also contributed to the theory of binary and ternary quadratic forms, and the theory of hypergeometric series. When Gauss was only 19 years old, he proved the construction of the heptadecagon, the first progress in regular polygon construction in over 2000 years. He also introduced the concept of Gaussian curvature and proved its key properties, especially with his Theorema Egregium. Gauss was the first to prove Gauss's inequality. Further, he was instrumental in the development of the arithmetic–geometric mean. Due to Gauss's extensive and fundamental contributions to science and mathematics, more than 100 mathematical and scientific concepts are named after him.
+Gauss was instrumental in the identification of Ceres as a dwarf planet. His work on the motion of planetoids disturbed by large planets led to the introduction of the Gaussian gravitational constant and the method of least squares, which he had discovered before Adrien-Marie Legendre published it. Gauss also introduced the algorithm known as recursive least squares. Gauss led the geodetic survey of the Kingdom of Hanover together with an arc measurement project from 1820 to 1844; Gauss was one of the founders of geophysics and formulated the fundamental principles of magnetism. He provided the first absolute measurement of Earth's magnetic field in 1832, later applying one of his inventions, that of spherical harmonic analysis, to show that most of Earth's magnetic field was internal. He was the first to discover and study non-Euclidean geometry, which he also named. Gauss was the first to develop a fast Fourier transform, doing so some 160 years before John Tukey and James Cooley. His practical work led to the invention of the heliotrope in 1821, a magnetometer in 1833 and – with Wilhelm Eduard Weber – the first electromagnetic telegraph in 1833.
+Gauss was awarded the Lalande Prize in 1809 for his work on planetary theory and determination of orbits, and the Copley Medal in 1838 for his mathematical research in magnetism. He is known for not publishing incomplete work and left several works to be edited posthumously, as a result, this practice delayed the dissemination of many of his discoveries. He believed that the act of learning, not possession of knowledge, provided the greatest enjoyment. While Gauss was not a committed or enthusiastic teacher, generally preferring to focus on his own work, some of his students, such as Richard Dedekind and Bernhard Riemann, became well-known and influential mathematicians in their own right. He married twice and had six children, several of whom later emigrated to the United States.
+
+
+== Biography ==
+
+
+=== Youth and education ===
+
+Gauss was born on 30 April 1777 in Brunswick, in the Duchy of Brunswick-Wolfenbüttel (now in the German state of Lower Saxony). His family was of relatively low social status. His father Gebhard Dietrich Gauss (1744–1808) worked variously as a butcher, bricklayer, gardener, and treasurer of a death-benefit fund. Gauss characterized his father as honourable and respected, but rough and dominating at home. He was experienced in writing and calculating, whereas his second wife Dorothea, Carl Friedrich's mother, was nearly illiterate. He had one elder brother from his father's first marriage.
+Gauss was a child prodigy in mathematics. When the elementary teachers noticed his intellectual abilities, they brought him to the attention of the Duke of Brunswick who sent him to the local Collegium Carolinum, which he attended from 1792 to 1795 with Eberhard August Wilhelm von Zimmermann as one of his teachers. Thereafter the Duke granted him the resources for studies of mathematics, sciences, and classical languages at the University of Göttingen until 1798. His professor in mathematics was Abraham Gotthelf Kästner, whom Gauss called "the leading mathematician among poets, and the leading poet among mathematicians" because of his epigrams. Astronomy was taught by Karl Felix Seyffer, with whom Gauss stayed in correspondence after graduation; Olbers and Gauss mocked him in their correspondence. On the other hand, he thought highly of Georg Christoph Lichtenberg, his teacher of physics, and of Christian Gottlob Heyne, whose lectures in classics Gauss attended with pleasure. Fellow students of this time were Johann Friedrich Benzenberg, Farkas Bolyai, and Heinrich Wilhelm Brandes.
+He was likely a self-taught student in mathematics since he independently rediscovered several theorems. He solved a geometrical problem that had occupied mathematicians since the Ancient Greeks when he determined in 1796 which regular polygons can be constructed by compass and straightedge. This discovery ultimately led Gauss to choose mathematics instead of philology as a career. Gauss's mathematical diary, a collection of short remarks about his results from the years 1796 until 1814, shows that many ideas for his mathematical magnum opus Disquisitiones Arithmeticae (1801) date from this time.
+An apocryphal story recounts that as an elementary student, Gauss and his class were tasked by their teacher, J.G. Büttner, to sum the numbers from 1 to 100. Much to Büttner's surprise, Gauss replied with the correct answer of 5050 in a vastly faster time than expected. Gauss had presumably realised that the sum could be rearranged as 50 pairs of 101 (1 + 100 = 101, 2 + 99= 101, etc.). Thus, he simply multiplied 50 by 101.
+Notably, this summation method had been explicitly described centuries earlier in the 12th-century Tosafot commentary on the Babylonian Talmud (Tractate Menachot 106a), which provides the same rule: "Take half of the total count and multiply it by the total count plus one.
+
+
+=== Private scholar ===
+Gauss graduated as a Doctor of Philosophy in 1799, not in Göttingen, as is sometimes stated, but from the University of Helmstedt, the only state university of the duchy. Johann Friedrich Pfaff assessed his doctoral thesis, and Gauss got the degree in absentia without further oral examination. The Duke then granted him the cost of living as a private scholar in Brunswick. Gauss subsequently refused calls from the Russian Academy of Sciences in St. Peterburg and Ludwig-Maximilians-Universität in Landshut. Later, the Duke promised him the foundation of an observatory in Brunswick in 1804. Architect Peter Joseph Krahe made preliminary designs, but one of Napoleon's wars cancelled those plans: the Duke was killed in the battle of Jena in 1806. The duchy was abolished in the following year, and Gauss's financial support stopped.
+When Gauss was calculating asteroid orbits in the first years of the century, he established contact with the astronomical communities of Bremen and Lilienthal, especially Wilhelm Olbers, Karl Ludwig Harding, and Friedrich Wilhelm Bessel, forming part of the informal group of astronomers known as the Celestial police. One of their aims was the discovery of further planets. They assembled data on asteroids and comets as a basis for Gauss's research on their orbits, which he later published in his astronomical magnum opus Theoria motus corporum coelestium in sectionibus conicis solem ambientium ("Theory of the motion of celestial bodies that orbit the sun in conic sections") (1809).
+
+
+=== Professor in Göttingen ===
+
+In November 1807, Gauss was hired by the University of Göttingen, then an institution of the newly founded Kingdom of Westphalia under Jérôme Bonaparte, as full professor and director of the astronomical observatory, and kept the chair until his death in 1855. He was soon confronted with the demand for two thousand francs from the Westphalian government as a war contribution, which he could not afford to pay. Both Olbers and Laplace wanted to help him with the payment, but Gauss refused their assistance. Finally, an anonymous person from Frankfurt, later discovered to be Prince-primate Dalberg, paid the sum.
+Gauss took on the directorship of the 60-year-old observatory, founded in 1748 by Prince-elector George II and built on a converted fortification tower, with usable but partly out-of-date instruments. The construction of a new observatory had been approved by Prince-elector George III in principle since 1802, and the Westphalian government continued the planning, but Gauss could not move to his new place of work until September 1816. He got new up-to-date instruments, including two meridian circles from Repsold and Reichenbach, and a heliometer from Fraunhofer.
+The scientific activity of Gauss, besides pure mathematics, can be roughly divided into three periods: astronomy was the main focus in the first two decades of the 19th century, geodesy in the third decade, and physics, mainly magnetism, in the fourth decade.
+Gauss made no secret of his aversion to giving academic lectures. But from the start of his academic career at Göttingen, he continuously gave lectures until 1854. He often complained about the burdens of teaching, feeling that it was a waste of his time. On the other hand, he occasionally described some students as talented. Most of his lectures dealt with astronomy, geodesy, and applied mathematics, and only three lectures on subjects of pure mathematics. Some of Gauss's students went on to become renowned mathematicians, physicists, and astronomers: Moritz Cantor, Dedekind, Dirksen, Encke, Gould, Heine, Klinkerfues, Kupffer, Listing, Möbius, Nicolai, Riemann, Ritter, Schering, Scherk, Schumacher, von Staudt, Stern, Ursin; as geoscientists Sartorius von Waltershausen, and Wappäus.
+Gauss did not write any textbook and disliked the popularization of scientific matters. His only attempts at popularization were his works on the date of Easter (1800/1802) and the essay Erdmagnetismus und Magnetometer of 1836. Gauss published his papers and books exclusively in Latin or German. He wrote Latin in a classical style but used some customary modifications set by contemporary mathematicians.
+
+Gauss gave his inaugural lecture at Göttingen University in 1808. He described his approach to astronomy as based on reliable observations and accurate calculations, rather than on belief or empty hypothesizing. At university, he was accompanied by a staff of other lecturers in his disciplines, who completed the educational program; these included the mathematician Thibaut with his lectures, the physicist Mayer, known for his textbooks, his successor Weber since 1831, and in the observatory Harding, who took the main part of lectures in practical astronomy. When the observatory was completed, Gauss occupied the western wing of the new observatory, while Harding took the eastern. They had once been on friendly terms, but over time they became alienated, possibly – as some biographers presume – because Gauss had wished the equal-ranked Harding to be no more than his assistant or observer. Gauss used the new meridian circles nearly exclusively, and kept them away from Harding, except for some very seldom joint observations.
+Brendel subdivides Gauss's astronomic activity chronologically into seven periods, of which the years since 1820 are taken as a "period of lower astronomical activity". The new, well-equipped observatory did not work as effectively as other ones; Gauss's astronomical research had the character of a one-man enterprise without a long-time observation program, and the university established a place for an assistant only after Harding died in 1834.
+Nevertheless, Gauss twice refused the opportunity to solve the problem, turning down offers from Berlin in 1810 and 1825 to become a full member of the Prussian Academy without burdening lecturing duties, as well as from Leipzig University in 1810 and from Vienna University in 1842, perhaps because of the family's difficult situation. Gauss's salary was raised from 1000 Reichsthaler in 1810 to 2500 Reichsthaler in 1824, and in his later years he was one of the best-paid professors of the university.
+When Gauss was asked for help by his colleague and friend Friedrich Wilhelm Bessel in 1810, who was in trouble at Königsberg University because of his lack of an academic title, Gauss provided a doctorate honoris causa for Bessel from the Philosophy Faculty of Göttingen in March 1811. Gauss gave another recommendation for an honorary degree for Sophie Germain but only shortly before her death, so she never received it. He also gave successful support to the mathematician Gotthold Eisenstein in Berlin.
+Gauss was loyal to the House of Hanover. After King William IV died in 1837, the new Hanoverian King Ernest Augustus annulled the 1833 constitution. Seven professors, later known as the "Göttingen Seven", protested against this, among them his friend and collaborator Wilhelm Weber and Gauss's son-in-law Heinrich Ewald. All of them were dismissed, and three of them were expelled, but Ewald and Weber could stay in Göttingen. Gauss was deeply affected by this quarrel but saw no possibility to help them.
+Gauss took part in academic administration: three times he was elected as dean of the Faculty of Philosophy. Being entrusted with the widow's pension fund of the university, he dealt with actuarial science and wrote a report on the strategy for stabilizing the benefits. He was appointed director of the Royal Academy of Sciences in Göttingen for nine years.
+Gauss remained mentally active into his old age, even while suffering from gout and general unhappiness. On 23 February 1855, he died of a heart attack in Göttingen; and was interred in the Albani Cemetery there. Heinrich Ewald, Gauss's son-in-law, and Wolfgang Sartorius von Waltershausen, Gauss's close friend and biographer, gave eulogies at his funeral.
+Gauss was a successful investor and accumulated considerable wealth with stocks and securities, amounting to a value of more than 150,000 Thaler; after his death, about 18,000 Thaler were found hidden in his rooms.
+
+
+=== Gauss's brain ===
+The day after Gauss's death his brain was removed, preserved, and studied by Rudolf Wagner, who found its mass to be slightly above average, at 1,492 grams (3.29 lb). Wagner's son Hermann, a geographer, estimated the cerebral area to be 219,588 square millimetres (340.362 sq in) in his doctoral thesis. In 2013, a neurobiologist at the Max Planck Institute for Biophysical Chemistry in Göttingen discovered that Gauss's brain had been mixed up soon after the first investigations, due to mislabelling, with that of the physician Conrad Heinrich Fuchs, who died in Göttingen a few months after Gauss. A further investigation showed no remarkable anomalies in the brains of either person. Thus, all investigations of Gauss's brain until 1998, except the first ones of Rudolf and Hermann Wagner, actually refer to the brain of Fuchs.
+
+
+=== Family ===
+
+Gauss married Johanna Osthoff on 9 October 1805 in St. Catherine's church in Brunswick. They had two sons and one daughter: Joseph (1806–1873), Wilhelmina (1808–1840), and Louis (1809–1810). Johanna died on 11 October 1809, one month after the birth of Louis, who himself died a few months later. Gauss chose the first names of his children in honour of Giuseppe Piazzi, Wilhelm Olbers, and Karl Ludwig Harding, the discoverers of the first asteroids.
+On 4 August 1810, Gauss married Wilhelmine (Minna) Waldeck, a friend of his first wife, with whom he had three more children: Eugen (later Eugene) (1811–1896), Wilhelm (later William) (1813–1879), and Therese (1816–1864). Minna Gauss died on 12 September 1831 after being seriously ill for more than a decade. Therese then took over the household and cared for Gauss for the rest of his life; after her father's death, she married actor Constantin Staufenau. Her sister Wilhelmina married the orientalist Heinrich Ewald. Gauss's mother Dorothea lived in his house from 1817 until she died in 1839.
+The eldest son Joseph, while still a schoolboy, helped his father as an assistant during the survey campaign in the summer of 1821. After a short time at university, in 1824 Joseph joined the Hanoverian army and assisted in surveying again in 1829. In the 1830s he was responsible for the enlargement of the survey network into the western parts of the kingdom. With his geodetical qualifications, he left the service and engaged in the construction of the railway network as director of the Royal Hanoverian State Railways. In 1836 he studied the railroad system in the US for some months.
+Eugen left Göttingen in September 1830 and emigrated to the United States, where he spent five years with the army. He then worked for the American Fur Company in the Midwest. He later moved to Missouri and became a successful businessman. Wilhelm married a niece of the astronomer Bessel; he then moved to Missouri, started as a farmer and became wealthy in the shoe business in St. Louis in later years. Eugene and William have numerous descendants in America, but the Gauss descendants left in Germany all derive from Joseph, as the daughters had no children.
+
+
+=== Personality ===
+
+
+==== Scholar ====
+
+In the first two decades of the 19th century, Gauss was the only important mathematician in Germany comparable to the leading French mathematicians.  His Disquisitiones Arithmeticae was the first mathematical book from Germany to be translated into the French language.
+Gauss was "in front of the new development" with documented research since 1799, his wealth of new ideas, and his rigour of demonstration. In contrast to previous mathematicians like Leonhard Euler, who let their readers take part in their reasoning, including certain erroneous deviations from the correct path, Gauss introduced a new style of direct and complete exposition that did not attempt to show the reader the author's train of thought.
+
+Gauss was the first to restore that rigor of demonstration which we admire in the ancients and which had been forced unduly into the background by the exclusive interest of the preceding period in new developments.
+But for himself, he propagated a quite different ideal, given in a letter to Farkas Bolyai as follows:
+
+It is not knowledge, but the act of learning, not possession but the act of getting there, which grants the greatest enjoyment. When I have clarified and exhausted a subject, then I turn away from it, in order to go into darkness again.
+His posthumous papers, his scientific diary, and short glosses in his own textbooks show that he empirically worked to a great extent. He was a lifelong busy and enthusiastic calculator, working extraordinarily quickly and checking his results through estimation. Nevertheless, his calculations were not always free from mistakes. He coped with the enormous workload by using skillful tools. Gauss used numerous mathematical tables, examined their exactness, and constructed new tables on various matters for personal use. He developed new tools for effective calculation, for example the Gaussian elimination. Gauss's calculations and the tables he prepared were often more precise than practically necessary. Very likely, this method gave him additional material for his theoretical work.
+
+Gauss was only willing to publish work when he considered it complete and above criticism. This perfectionism was in keeping with the motto of his personal seal Pauca sed Matura ("Few, but Ripe"). Many colleagues encouraged him to publicize new ideas and sometimes rebuked him if he hesitated too long, in their opinion. Gauss defended himself by claiming that the initial discovery of ideas was easy, but preparing a presentable elaboration was a demanding matter for him, for either lack of time or "serenity of mind". Nevertheless, he published many short communications of urgent content in various journals, but left a considerable literary estate, too. Gauss referred to mathematics as "the queen of sciences" and arithmetics as "the queen of mathematics", and supposedly once espoused a belief in the necessity of immediately understanding Euler's identity as a benchmark pursuant to becoming a first-class mathematician.
+On certain occasions, Gauss claimed that the ideas of another scholar had already been in his possession previously. Thus his concept of priority as "the first to discover, not the first to publish" differed from that of his scientific contemporaries. In contrast to his perfectionism in presenting mathematical ideas, his citations were criticized as negligent. He justified himself with an unusual view of correct citation practice: he would only give complete references, with respect to the previous authors of importance, which no one should ignore, but citing in this way would require knowledge of the history of science and more time than he wished to spend.
+
+
+==== Private man ====
+Soon after Gauss's death, his friend Sartorius published the first biography (1856), written in a rather enthusiastic style. Sartorius saw him as a serene and forward-striving man with childlike modesty, but also of "iron character" with an unshakeable strength of mind. Apart from his closer circle, others regarded him as reserved and unapproachable "like an Olympian sitting enthroned on the summit of science". His close contemporaries agreed that Gauss was a man of difficult character. He often refused to accept compliments. His visitors were occasionally irritated by his grumpy behaviour, but a short time later his mood could change, and he would become a charming, open-minded host. Gauss disliked polemic natures; together with his colleague Hausmann he opposed to a call for Justus Liebig on a university chair in Göttingen, "because he was always involved in some polemic."
+
+Gauss's life was overshadowed by severe problems in his family. When his first wife Johanna suddenly died shortly after the birth of their third child, he revealed the grief in a last letter to his dead wife in the style of an ancient threnody, the most personal of his surviving documents. His second wife and his two daughters suffered from tuberculosis. In a letter to Bessel, dated December 1831, Gauss hinted at his distress, describing himself as "the victim of the worst domestic sufferings".
+Because of his wife's illness, both younger sons were educated for some years in Celle, far from Göttingen. The military career of his elder son Joseph ended after more than two decades at the poorly paid rank of first lieutenant, although he had acquired a considerable knowledge of geodesy. He needed financial support from his father even after he was married. The second son Eugen shared a good measure of his father's talent in computation and languages but had a lively and sometimes rebellious character. He wanted to study philology, whereas Gauss wanted him to become a lawyer. Having run up debts and caused a scandal in public, Eugen suddenly left Göttingen under dramatic circumstances in September 1830 and emigrated via Bremen to the United States. He wasted the little money he had taken to start, after which his father refused further financial support. The youngest son Wilhelm wanted to qualify for agricultural administration, but had difficulties getting an appropriate education, and eventually emigrated as well. Only Gauss's youngest daughter Therese accompanied him in his last years of life.
+In his later years Gauss habitually collected various types of useful or useless numerical data, such as the number of paths from his home to certain places in Göttingen or peoples' ages in days; he congratulated Humboldt in December 1851 for having reached the same age as Isaac Newton at his death, calculated in days.
+Beyond his excellent knowledge of Latin, he was also acquainted with modern languages. Gauss read both classical and modern literature, and English and French works in the original languages. His favorite English author was Walter Scott, his favorite German Jean Paul. At the age of 62, he began to teach himself Russian, very likely to understand scientific writings from Russia, among them those of Lobachevsky on non-Euclidean geometry. Gauss liked singing and went to concerts. He was a busy newspaper reader; in his last years, he would visit an academic press salon of the university every noon. Gauss did not care much for philosophy, and mocked the "splitting hairs of the so-called metaphysicians", by which he meant proponents of the contemporary school of Naturphilosophie.
+Gauss had an "aristocratic and through and through conservative nature", with little respect for people's intelligence and morals, following the motto "mundus vult decipi". He disliked Napoleon and his system and was horrified by violence and revolution of all kinds. Thus he condemned the methods of the Revolutions of 1848, though he agreed with some of their aims, such as that of a unified Germany. He had a low estimation of the constitutional system and he criticized parliamentarians of his time for their perceived ignorance and logical errors.
+Some Gauss biographers have speculated on his religious beliefs. He sometimes said "God arithmetizes" and "I succeeded – not on account of my hard efforts, but by the grace of the Lord." Gauss was a member of the Lutheran church, like most of the population in northern Germany, but it seems that he did not believe all Lutheran dogma or understand the Bible fully literally. According to Sartorius, Gauss's religious tolerance,  "insatiable thirst for truth" and sense of justice were motivated by his religious convictions.
+
+
+== Mathematics ==
+
+
+=== Algebra and number theory ===
+
+
+==== Fundamental theorem of algebra ====
+
+In his doctoral thesis from 1799, Gauss proved the fundamental theorem of algebra which states that every non-constant single-variable polynomial with complex coefficients has at least one complex root. Mathematicians including Jean le Rond d'Alembert had produced false proofs before him, and Gauss's dissertation contains a critique of d'Alembert's work. He subsequently produced three other proofs, the last one in 1849 being generally rigorous. His attempts led to considerable clarification of the concept of complex numbers.
+
+
+==== Disquisitiones Arithmeticae ====
+
+In the preface to the Disquisitiones, Gauss dates the beginning of his work on number theory to 1795. By studying the works of previous mathematicians like Fermat, Euler, Lagrange, and Legendre, he realized that these scholars had already found much of what he had independently discovered. The Disquisitiones Arithmeticae, written in 1798 and published in 1801, consolidated number theory as a discipline and covered both elementary and algebraic number theory. Therein he introduces the triple bar symbol (≡) for congruence and uses it for a clean presentation of modular arithmetic. It deals with the unique factorization theorem and primitive roots modulo n. In the main sections, Gauss presents the first two proofs of the law of quadratic reciprocity and develops the theories of binary and ternary quadratic forms.
+The Disquisitiones include the Gauss composition law for binary quadratic forms, as well as the enumeration of the number of representations of an integer as the sum of three squares. As an almost immediate corollary of his theorem on three squares, he proves the triangular case of the Fermat polygonal number theorem for n = 3. From several analytic results on class numbers that Gauss gives without proof towards the end of the fifth section, it appears that Gauss already knew the class number formula in 1801.
+In the last section, Gauss gives proof for the constructibility of a regular heptadecagon (17-sided polygon) with straightedge and compass by reducing this geometrical problem to an algebraic one. This was the first progress in regular polygon construction in over 2000 years. He shows that a regular polygon is constructible if the number of its sides is either a power of 2 or the product of a power of 2 and any number of distinct Fermat primes. In the same section, he gives a result on the number of solutions of certain cubic polynomials with coefficients in finite fields, which amounts to counting integral points on an elliptic curve. An unfinished chapter, consisting of work done during 1797–1799, was found among his papers after his death.
+
+
+==== Further investigations ====
+One of Gauss's first results was the empirically found conjecture of 1792 – the later called prime number theorem – giving an estimation of the number of prime numbers by using the integral logarithm.
+In 1816, Olbers encouraged Gauss to compete for a prize from the French Academy for a proof for Fermat's Last Theorem; he refused, considering the topic uninteresting. However, after his death a short undated paper was found with proofs of the theorem for the cases n = 3 and n = 5. The particular case of n = 3 was proved much earlier by Leonhard Euler, but Gauss developed a more streamlined proof which made use of Eisenstein integers; though more general, the proof was simpler than in the real integers case.
+Gauss contributed to solving the Kepler conjecture in 1831 with the proof that a greatest packing density of spheres in the three-dimensional space is given when the centres of the spheres form a cubic face-centred arrangement, when he reviewed a book of Ludwig August Seeber on the theory of reduction of positive ternary quadratic forms. Having noticed some lacks in Seeber's proof, he simplified many of his arguments, proved the central conjecture, and remarked that this theorem is equivalent to the Kepler conjecture for regular arrangements.
+In  two papers on biquadratic residues (1828, 1832) Gauss introduced the ring of Gaussian integers 
+  
+    
+      
+        
+          Z
+        
+        [
+        i
+        ]
+      
+    
+    {\displaystyle \mathbb {Z} [i]}
+  
+, showed that it is a unique factorization domain, and generalized some key arithmetic concepts, such as Fermat's little theorem and Gauss's lemma. The main objective of introducing this ring was to formulate the law of biquadratic reciprocity – as Gauss discovered, rings of complex integers are the natural setting for such higher reciprocity laws.
+In the second paper, he stated the general law of biquadratic reciprocity and proved several special cases of it. In an earlier publication from 1818 containing his fifth and sixth proofs of quadratic reciprocity, he claimed the techniques of these proofs (Gauss sums) can be applied to prove higher reciprocity laws.
+
+
+=== Analysis ===
+One of Gauss's first discoveries was the notion of the arithmetic-geometric mean (AGM) of two positive real numbers. He discovered its relation to elliptic integrals in the years 1798–1799 through Landen's transformation, and a diary entry recorded the discovery of the connection of Gauss's constant to lemniscatic elliptic functions, a result that Gauss stated  "will surely open an entirely new field of analysis". He also made early inroads into the more formal issues of the foundations of complex analysis, and from a letter to Bessel in 1811 it is clear that he knew the "fundamental theorem of complex analysis" – Cauchy's integral theorem – and understood the notion of complex residues when integrating around poles.
+Euler's pentagonal numbers theorem, together with other researches on the AGM and lemniscatic functions, led him to plenty of results on Jacobi theta functions, culminating in the discovery in 1808 of the later called Jacobi triple product identity, which includes Euler's theorem as a special case. His works show that he knew modular transformations of order 3, 5, 7 for elliptic functions since 1808.
+Several mathematical fragments in his Nachlass indicate that he knew parts of the modern theory of modular forms. In his work on the multivalued AGM of two complex numbers, he discovered a deep connection between the infinitely many values of the AGM and its two "simplest values". In his unpublished writings he recognized and made a sketch of the key concept of fundamental domain for the modular group. One of Gauss's sketches of this kind was a drawing of a tessellation of the unit disk by "equilateral" hyperbolic triangles with all angles equal to 
+  
+    
+      
+        π
+        
+          /
+        
+        4
+      
+    
+    {\displaystyle \pi /4}
+  
+.
+An example of Gauss's insight in analysis is the cryptic remark that the principles of circle division by compass and straightedge can also be applied to the division of the lemniscate curve, which inspired Abel's theorem on lemniscate division. Another example is his publication "Summatio quarundam serierum singularium" (1811) on the determination of the sign of quadratic Gauss sums, in which he solved the main problem by introducing q-analogs of binomial coefficients and manipulating them by several original identities that seem to stem from his work on elliptic function theory; however, Gauss cast his argument in a formal way that does not reveal its origin in elliptic function theory, and only the later work of mathematicians such as Jacobi and Hermite has exposed the crux of his argument.
+In the "Disquisitiones generales circa series infinitam..." (1813), he provides the first systematic treatment of the general hypergeometric function 
+  
+    
+      
+        F
+        (
+        α
+        ,
+        β
+        ,
+        γ
+        ,
+        x
+        )
+      
+    
+    {\displaystyle F(\alpha ,\beta ,\gamma ,x)}
+  
+, and shows that many of the functions known at the time are special cases of the hypergeometric function. This work is the first exact inquiry into convergence of infinite series in the history of mathematics. Furthermore, it deals with infinite continued fractions arising as ratios of hypergeometric functions, which are now called Gauss continued fractions.
+In 1823, Gauss won the prize of the Danish Society with an essay on conformal mappings, which contains several developments that pertain to the field of complex analysis. Gauss stated that angle-preserving mappings in the complex plane must be complex analytic functions, and used the later-named Beltrami equation to prove the existence of isothermal coordinates on analytic surfaces. The essay concludes with examples of conformal mappings into a sphere and an ellipsoid of revolution.
+
+
+==== Numerical analysis ====
+Gauss often deduced theorems inductively from numerical data he had collected empirically. As such, the use of efficient algorithms to facilitate calculations was vital to his research, and he made many contributions to numerical analysis, such as the method of Gaussian quadrature, published in 1816.
+In a private letter to Gerling from 1823, he described a solution of a 4x4 system of linear equations with the Gauss-Seidel method – an "indirect" iterative method for the solution of linear systems, and recommended it over the usual method of "direct elimination" for systems of more than two equations.
+Gauss invented an algorithm for calculating what is now called discrete Fourier transforms when calculating the orbits of Pallas and Juno in 1805, 160 years before Cooley and Tukey found their similar Cooley–Tukey algorithm. He developed it as a trigonometric interpolation method, but the paper Theoria Interpolationis Methodo Nova Tractata was published only posthumously in 1876, well after Joseph Fourier's introduction of the subject in 1807.
+
+
+=== Geometry ===
+
+
+==== Differential geometry ====
+
+The geodetic survey of Hanover fuelled Gauss's interest in differential geometry and topology, fields of mathematics dealing with curves and surfaces. This led him in 1828 to the publication of a work that marks the birth of modern differential geometry of surfaces, as it departed from the traditional ways of treating surfaces as cartesian graphs of functions of two variables, and that initiated the exploration of surfaces from the "inner" point of view of a two-dimensional being constrained to move on it. As a result, the Theorema Egregium (remarkable theorem), established a property of the notion of Gaussian curvature. Informally, the theorem says that the curvature of a surface can be determined entirely by measuring angles and distances on the surface, regardless of the embedding of the surface in three-dimensional or two-dimensional space.
+The Theorema Egregium leads to the abstraction of surfaces as doubly-extended manifolds; it clarifies the distinction between the intrinsic properties of the manifold (the metric) and its physical realization in ambient space. A consequence is the impossibility of an isometric transformation between surfaces of different Gaussian curvature. This means practically that a sphere or an ellipsoid cannot be transformed to a plane without distortion, which causes a fundamental problem in designing projections for geographical maps. A portion of this essay is dedicated to a profound study of geodesics. In particular, Gauss proves the local Gauss–Bonnet theorem on geodesic triangles, and generalizes Legendre's theorem on spherical triangles to geodesic triangles on arbitrary surfaces with continuous curvature; he found that the angles of a "sufficiently small" geodesic triangle deviate from that of a planar triangle of the same sides in a way that depends only on the values of the surface curvature at the vertices of the triangle, regardless of the behaviour of the surface in the triangle interior.
+Gauss's memoir from 1828 lacks the conception of geodesic curvature. However, in a previously unpublished manuscript, very likely written in 1822–1825, he introduced the term "side curvature" (German: "Seitenkrümmung") and proved its invariance under isometric transformations, a result that was later obtained by Ferdinand Minding and published by him in 1830. This Gauss paper contains the core of his lemma on total curvature, but also its generalization, found and proved by Pierre Ossian Bonnet in 1848 and known as the Gauss–Bonnet theorem.
+
+
+==== Non-Euclidean geometry ====
+
+During Gauss's lifetime, the parallel postulate of Euclidean geometry was heavily discussed. Numerous efforts were made to prove it in the frame of the Euclidean axioms, whereas some mathematicians discussed the possibility of geometrical systems without it. Gauss thought about the basics of geometry from the 1790s on, but only realized in the 1810s  that a non-Euclidean geometry without the parallel postulate could solve the problem. In a letter to Franz Taurinus of 1824, he presented a short comprehensible outline of what he named a "non-Euclidean geometry", but he strongly forbade Taurinus to make any use of it. Gauss is credited with having been the one to first discover and study non-Euclidean geometry, even coining the term as well.
+The first publications on non-Euclidean geometry in the history of mathematics were authored by Nikolai Lobachevsky in 1829 and János Bolyai in 1832. In the following years, Gauss wrote his ideas on the topic but did not publish them, thus avoiding influencing the contemporary scientific discussion. Gauss commended the ideas of János Bolyai in a letter to his father and university friend Farkas Bolyai claiming that these were congruent to his own thoughts of some decades. However, it is not quite clear to what extent he preceded Lobachevsky and Bolyai, as his written remarks are vague and obscure.
+Sartorius first mentioned Gauss's work on non-Euclidean geometry in 1856, but only the publication of Gauss's Nachlass in Volume VIII of the Collected Works (1900) showed Gauss's ideas on the matter, at a time when non-Euclidean geometry was still an object of some controversy.
+
+
+==== Early topology ====
+Gauss was also an early pioneer of topology or Geometria Situs, as it was called in his lifetime. The first proof of the fundamental theorem of algebra in 1799 contained an essentially topological argument; fifty years later, he further developed the topological argument in his fourth proof of this theorem.
+
+Another encounter with topological notions occurred to him in the course of his astronomical work in 1804, when he determined the limits of the region on the celestial sphere in which comets and asteroids might appear, and which he termed "Zodiacus". He discovered that if the Earth's and comet's orbits are linked, then by topological reasons the Zodiacus is the entire sphere. In 1848, in the context of the discovery of the asteroid 7 Iris, he  published a further qualitative discussion of the Zodiacus.
+In Gauss's letters of 1820–1830, he thought intensively on topics with close affinity to Geometria Situs, and became gradually conscious of semantic difficulty in this field. Fragments from this period reveal that he tried to classify "tract figures", which are closed plane curves with a finite number of transverse self-intersections, that may also be planar projections of knots. To do so he devised a symbolical scheme, the Gauss code, that in a sense captured the characteristic features of tract figures.
+In a fragment from 1833, Gauss defined the linking number of two space curves by a certain double integral, and in doing so provided for the first time an analytical formulation of a topological phenomenon. On the same note, he lamented the little progress made in Geometria Situs, and remarked that one of its central problems will be "to count the intertwinings of two closed or infinite curves". His notebooks from that period reveal that he was also thinking about other topological objects such as braids and tangles.
+Gauss's influence in later years to the emerging field of topology, which he held in high esteem, was through occasional remarks and oral communications to Mobius and Listing.
+
+
+=== Minor mathematical accomplishments ===
+Gauss applied the concept of complex numbers to solve well-known problems in a new concise way. For example, in a short note from 1836 on geometric aspects of the ternary forms and their application to crystallography, he stated the fundamental theorem of axonometry, which tells how to represent a 3D cube on a 2D plane with complete accuracy, via complex numbers. He described rotations of this sphere as the action of certain linear fractional transformations on the extended complex plane, and gave a proof for the geometric theorem that the altitudes of a triangle always meet in a single orthocenter.
+Gauss was concerned with John Napier's "Pentagramma mirificum" – a certain spherical pentagram – for several decades; he approached it from various points of view, and gradually gained a full understanding of its geometric, algebraic, and analytic aspects. In particular, in 1843 he stated and proved several theorems connecting elliptic functions, Napier spherical pentagons, and Poncelet pentagons in the plane.
+Furthermore, he contributed a solution to the problem of constructing the largest-area ellipse inside a given quadrilateral, and discovered a surprising result about the computation of area of pentagons.
+
+
+== Sciences ==
+
+
+=== Astronomy ===
+
+On 1 January 1801, Italian astronomer Giuseppe Piazzi discovered a new celestial object, presumed it to be the long searched planet between Mars and Jupiter according to the so-called Titius–Bode law, and named it Ceres. He could track it only for a short time until it disappeared behind the glare of the Sun. The mathematical tools of the time were not sufficient to predict the location of its reappearance from the few data available. Gauss tackled the problem and predicted a position for possible rediscovery in December 1801. This turned out to be accurate within a half-degree when Franz Xaver von Zach on 7 and 31 December at Gotha, and independently Heinrich Olbers on 1 and 2 January in Bremen, identified the object near the predicted position.
+Gauss's method leads to an equation of the eighth degree, of which one solution, the Earth's orbit, is known. The solution sought is then separated from the remaining six based on physical conditions. In this work, Gauss used comprehensive approximation methods which he created for that purpose.
+The discovery of Ceres led Gauss to the theory of the motion of planetoids disturbed by large planets, eventually published in 1809 as Theoria motus corporum coelestium in sectionibus conicis solem ambientum. It introduced the Gaussian gravitational constant.
+Since the new asteroids had been discovered, Gauss occupied himself with the perturbations of their orbital elements. Firstly he examined Ceres with analytical methods similar to those of Laplace, but his favorite object was Pallas, because of its great eccentricity and orbital inclination, whereby Laplace's method did not work. Gauss used his own tools: the arithmetic–geometric mean, the hypergeometric function, and his method of interpolation. He found an orbital resonance with Jupiter in proportion 18:7 in 1812; Gauss gave this result as cipher, and gave the explicit meaning only in letters to Olbers and Bessel. After long years of work, he finished it in 1816 without a result that seemed sufficient to him. This marked the end of his activities in theoretical astronomy.
+
+One fruit of Gauss's research on Pallas perturbations was the Determinatio Attractionis... (1818) on a method of theoretical astronomy that later became known as the "elliptic ring method". It introduced an averaging conception in which a planet in orbit is replaced by a fictitious ring with mass density proportional to the time the planet takes to follow the corresponding orbital arcs. Gauss presents the method of evaluating the gravitational attraction of such an elliptic ring, which includes several steps; one of them involves a direct application of the arithmetic-geometric mean (AGM) algorithm to calculate an elliptic integral.
+Even after Gauss's contributions to theoretical astronomy came to an end, more practical activities in observational astronomy continued and occupied him during his entire career. As early as 1799, Gauss dealt with the determination of longitude by use of the lunar parallax, for which he developed more convenient formulas than those were in common use. After appointment as director of observatory he attached importance to the fundamental astronomical constants in correspondence with Bessel. Gauss himself provided tables of nutation and aberration, solar coordinates, and refraction. He made many contributions to spherical geometry, and in this context solved some practical problems about navigation by stars. He published a great number of observations, mainly on minor planets and comets; his last observation was the solar eclipse of 28 July 1851.
+
+
+=== Chronology ===
+Gauss's first publication following his doctoral thesis dealt with the determination of the date of Easter (1800), an elementary mathematical topic. Gauss aimed to present a convenient algorithm for people without any knowledge of ecclesiastical or even astronomical chronology, and thus avoided the usual terms of golden number, epact, solar cycle, domenical letter, and any religious connotations. This choice of topic likely had historical grounds. The replacement of the Julian calendar by the Gregorian calendar had caused confusion in the Holy Roman Empire since the 16th century and was not finished in Germany until 1700, when the difference of eleven days was deleted. Even after this, Easter fell on different dates in Protestant and Catholic territories, until this difference was abolished by agreement in 1776. In the Protestant states, such as the Duchy of Brunswick, the Easter of 1777, five weeks before Gauss's birth, was the first one calculated in the new manner.
+
+
+=== Error theory ===
+Gauss likely used the method of least squares to minimize the impact of measurement error when calculating the orbit of Ceres. The method was published first by Adrien-Marie Legendre in 1805, but Gauss claimed in Theoria motus (1809) that he had been using it since 1794 or 1795. In the history of statistics, this disagreement is called the "priority dispute over the discovery of the method of least squares". Gauss proved that the method has the lowest sampling variance within the class of linear unbiased estimators under the assumption of normally distributed errors (Gauss–Markov theorem), in the two-part paper Theoria combinationis observationum erroribus minimis obnoxiae (1823).
+In the first paper he proved Gauss's inequality (a Chebyshev-type inequality) for unimodal distributions, and stated without proof another inequality for moments of the fourth order (a special case of the Gauss-Winckler inequality). He derived lower and upper bounds for the variance of the sample variance. In the second paper, Gauss described recursive least squares methods, which he discovered. Gauss's work on the theory of errors was extended in several directions by the geodesist Friedrich Robert Helmert to the Gauss-Helmert model.
+Gauss also contributed to problems in probability theory that are not directly concerned with the theory of errors. One example appears as a diary note where he tried to describe the asymptotic distribution of entries in the continued fraction expansion of a random number uniformly distributed in (0,1). He derived this distribution, now known as the Gauss-Kuzmin distribution, as a by-product of the discovery of the ergodicity of the Gauss map for continued fractions. Gauss's solution is the first-ever result in the metrical theory of continued fractions.
+
+
+=== Geodesy ===
+
+Gauss was busy with geodetic problems since 1799 when he helped Karl Ludwig von Lecoq with calculations during his survey in Westphalia. Beginning in 1804, he taught himself some practical geodesy in Brunswick and Göttingen.
+Since 1816, Gauss's former student Heinrich Christian Schumacher, then professor in Copenhagen, but living in Altona (Holstein) near Hamburg as head of an observatory, carried out a triangulation of the Jutland peninsula from Skagen in the north to Lauenburg in the south. This project was the basis for map production but also aimed at determining the geodetic arc between the terminal sites. Data from geodetic arcs were used to determine the dimensions of the earth geoid, and long arc distances brought more precise results. Schumacher asked Gauss to continue this work further to the south in the Kingdom of Hanover; Gauss agreed after a short time of hesitation. Finally, in May 1820, King George IV gave the order to Gauss.
+An arc measurement needs a precise astronomical determination of at least two points in the network. Gauss and Schumacher used the coincidence that both observatories in Göttingen and Altona, in the garden of Schumacher's house, lay nearly in the same longitude. The latitude was measured with both their instruments and a zenith sector of Ramsden that was transported to both observatories.
+Gauss and Schumacher had already determined some angles between Lüneburg, Hamburg, and Lauenburg for the geodetic connection in October 1818. During the summers of 1821 until 1825 Gauss directed the triangulation work personally, from Thuringia in the south to the river Elbe in the north. The triangle between Hoher Hagen, Großer Inselsberg in the Thuringian Forest, and Brocken in the Harz mountains was the largest one Gauss had ever measured with a maximum size of 107 km (66.5 miles). In the thinly populated Lüneburg Heath without significant natural summits or artificial buildings, he had difficulties finding suitable triangulation points; sometimes cutting lanes through the vegetation was necessary.
+For pointing signals, Gauss invented a new instrument with movable mirrors and a small telescope that reflects the sunbeams to the triangulation points, and named it heliotrope. Another suitable construction for the same purpose was a sextant with an additional mirror which he named vice heliotrope. Gauss was assisted by soldiers of the Hanoverian army, among them his eldest son Joseph. Gauss took part in the baseline measurement (Braak Base Line) of Schumacher in the village of Braak near Hamburg in 1820, and used the result for the evaluation of the Hanoverian triangulation.
+An additional result was a better value for the flattening of the approximative Earth ellipsoid. Gauss developed the universal transverse Mercator projection of the ellipsoidal shaped Earth (what he named conform projection) for representing geodetical data in plane charts.
+When the arc measurement was finished, Gauss began the enlargement of the triangulation to the west to get a survey of the whole Kingdom of Hanover with a Royal decree from 25 March 1828. The practical work was directed by three army officers, among them Lieutenant Joseph Gauss. The complete data evaluation laid in the hands of Gauss, who applied his mathematical inventions such as the method of least squares and the elimination method to it. The project was finished in 1844, and Gauss sent a final report of the project to the government; his method of projection was not edited until 1866.
+In 1828, when studying differences in latitude, Gauss first defined a physical approximation for the figure of the Earth as the surface everywhere perpendicular to the direction of gravity; later his doctoral student Johann Benedict Listing called this the geoid.
+
+
+=== Magnetism and telegraphy ===
+
+
+==== Geomagnetism ====
+
+Gauss had been interested in magnetism since 1803. After Alexander von Humboldt visited Göttingen in 1826, both scientists began intensive research on geomagnetism, partly independently, partly in productive cooperation. In 1828, Gauss was Humboldt's guest during the conference of the Society of German Natural Scientists and Physicians in Berlin, where he got acquainted with the physicist Wilhelm Weber.
+When Weber got the chair for physics in Göttingen as successor of Johann Tobias Mayer by Gauss's recommendation in 1831, both of them started a fruitful collaboration, leading to a new knowledge of magnetism with a representation for the unit of magnetism in terms of mass, charge, and time. They founded the Magnetic Association (German: Magnetischer Verein), an international working group of several observatories, which carried out measurements of Earth's magnetic field in many regions of the world using equivalent methods at arranged dates in the years 1836 to 1841.
+In 1836, Humboldt suggested the establishment of a worldwide net of geomagnetic stations in the British dominions with a letter to the Duke of Sussex, then president of the Royal Society; he proposed that magnetic measures should be taken under standardized conditions using his methods. Together with other instigators, this led to a global program known as "Magnetical crusade" under the direction of Edward Sabine. The dates, times, and intervals of observations were determined in advance, the Göttingen mean time was used as the standard. 61 stations on all five continents participated in this global program. Gauss and Weber founded a series for publication of the results, six volumes were edited between 1837 and 1843. Weber's departure to Leipzig in 1843 as late effect of the Göttingen Seven affair marked the end of Magnetic Association activity.
+Following Humboldt's example, Gauss ordered a magnetic observatory to be built in the garden of the observatory, but the scientists differed over instrumental equipment; Gauss preferred stationary instruments, which he thought to give more precise results, whereas Humboldt was accustomed to movable instruments. Gauss was interested in the temporal and spatial variation of magnetic declination, inclination, and intensity and differentiated, unlike Humboldt, between "horizontal" and "vertical" intensity. Together with Weber, he developed methods of measuring the components of the intensity of the magnetic field and constructed a suitable magnetometer to measure absolute values of the strength of the Earth's magnetic field, not more relative ones that depended on the apparatus. The precision of the magnetometer was about ten times higher than that of previous instruments. With this work, Gauss was the first to derive a non-mechanical quantity by basic mechanical quantities. He devised spherical harmonic analysis as a technique to describe potential fields, and used it to show most of Earth's magnetic field was from internal sources.
+Gauss carried out a General Theory of Terrestrial Magnetism (1839), in what he believed to describe the nature of magnetic force; according to Felix Klein, this work is a presentation of observations by use of spherical harmonics rather than a physical theory. The theory predicted the existence of exactly two magnetic poles on the Earth, thus Hansteen's idea of four magnetic poles became obsolete, and the data allowed to determine their location with rather good precision.
+Gauss influenced the beginning of geophysics in Russia, when Adolph Theodor Kupffer, one of his former students, founded a magnetic observatory in St. Petersburg, following the example of the observatory in Göttingen, and similarly, Ivan Simonov in Kazan.
+
+
+==== Electromagnetism ====
+
+The discoveries of Hans Christian Ørsted on electromagnetism and Michael Faraday on electromagnetic induction drew Gauss's attention to these matters. Gauss and Weber found rules for branched electric circuits, which were later found independently and first published by Gustav Kirchhoff and named after him as Kirchhoff's circuit laws, and made inquiries into electromagnetism. They constructed the first electromechanical telegraph in 1833, and Weber himself connected the observatory with the institute for physics in the town centre of Göttingen, but they made no further commercial use of this invention.
+Gauss's main theoretical interests in electromagnetism were reflected in his attempts to formulate quantitive laws governing electromagnetic induction. In notebooks from these years, he recorded several innovative formulations; he discovered the vector potential function, independently rediscovered by Franz Ernst Neumann in 1845, and in January 1835 he wrote down an "induction law" equivalent to Faraday's law, which stated that the electromotive force at a given point in space is equal to the instantaneous rate of change (with respect to time) of this function.
+Gauss tried to find a unifying law for long-distance effects of electrostatics, electrodynamics, electromagnetism, and induction, comparable to Newton's law of gravitation, but his attempt ended in a "tragic failure".
+
+
+=== Potential theory ===
+Since Isaac Newton had shown theoretically that the Earth and rotating stars assume non-spherical shapes, the problem of attraction of ellipsoids gained importance in mathematical astronomy. In his first publication on potential theory, the "Theoria attractionis..." (1813), Gauss provided a closed-form expression to the gravitational attraction of a homogeneous triaxial ellipsoid at every point in space. In contrast to previous research of Maclaurin, Laplace and Lagrange, Gauss's new solution treated the attraction more directly in the form of an elliptic integral. In the process, he also proved and applied some special cases of the so-called Gauss's theorem in vector analysis.
+In the General theorems concerning the attractive and repulsive forces acting in reciprocal proportions of quadratic distances (1840) Gauss gave a basic theory of magnetic potential, based on Lagrange, Laplace, and Poisson; it seems rather unlikely that he knew the previous works of George Green on this subject. However, Gauss could never give any reasons for magnetism, nor a theory of magnetism similar to Newton's work on gravitation, that enabled scientists to predict geomagnetic effects in the future.
+
+
+=== Optics ===
+Gauss's calculations enabled instrument maker Johann Georg Repsold in Hamburg to construct a new achromatic lens system in 1810. A main problem, among other difficulties, was that the refractive index and dispersion of the glass used were not precisely known. In a short article from 1817 Gauss dealt with the problem of removal of chromatic aberration in double lenses, and computed adjustments of the shape and coefficients of refraction required to minimize it. His work was noted by the optician Carl August von Steinheil, who in 1860 introduced the achromatic Steinheil doublet, partly based on Gauss's calculations. Many results in geometrical optics are scattered in Gauss's correspondences and hand notes.
+In the Dioptrical Investigations (1840), Gauss gave the first systematic analysis of the formation of images under a paraxial approximation (Gaussian optics). He characterized optical systems under a paraxial approximation only by its cardinal points, and he derived the Gaussian lens formula, applicable without restrictions in respect to the thickness of the lenses.
+
+
+=== Mechanics ===
+Gauss's first work in mechanics concerned the earth's rotation. When his university friend Benzenberg carried out experiments to determine the deviation of falling masses from the perpendicular in 1802, what today is known as the Coriolis force, he asked Gauss for a theory-based calculation of the values for comparison with the experimental ones. Gauss elaborated a system of fundamental equations for the motion, and the results corresponded sufficiently with Benzenberg's data, who added Gauss's considerations as an appendix to his book on falling experiments.
+After Foucault had demonstrated the earth's rotation by his pendulum experiment in public in 1851, Gerling questioned Gauss for further explanations. This instigated Gauss to design a new apparatus for demonstration with a much shorter length of pendulum than Foucault's one. The oscillations were observed with a reading telescope, with a vertical scale and a mirror fastened at the pendulum. It is described in the Gauss–Gerling correspondence and Weber made some experiments with this apparatus in 1853, but no data were published.
+Gauss's principle of least constraint of 1829 was established as a general concept to overcome the division of mechanics into statics and dynamics, combining D'Alembert's principle with Lagrange's principle of virtual work, and showing analogies to the method of least squares.
+
+
+=== Metrology ===
+In 1828, Gauss was appointed as head of the board for weights and measures of the Kingdom of Hanover. He created standards for length and measure. Gauss himself took care of the time-consuming measures and gave detailed orders for the mechanical construction. In the correspondence with Schumacher, who was also working on this matter, he described new ideas for high-precision scales. He submitted the final reports on the Hanoverian foot and pound to the government in 1841. This work achieved international importance due to an 1836 law that connected the Hanoverian measures with the English ones.
+
+
+== Recognition ==
+Gauss is frequently regarded as one of the three greatest mathematicians of all time alongside Isaac Newton and Archimedes. He has been called the "Prince of Mathematics".
+According to mathematician Felix Klein, when asked who was the greatest mathematician in Germany, French polymath Pierre-Simon Laplace reportedly replied, "Pfaff." When his questioner expressed surprise that he had not named Gauss, Laplace responded, "Oh, Gauss is the greatest mathematician in Europe."
+Mathematician and astronomer Henry John Stephen Smith ranked Gauss second only to Newton, writing that:
+
+If we except the great name of Newton (and the exception is one that the great Gauss himself would have been delighted to make) it is probable that no mathematician of any age or country has ever surpassed Gauss in the combination of an abundant fertility of invention with an absolute vigorousness in demonstration, which the ancient Greeks themselves might have envied.
+
+
+== Honours and awards ==
+
+Gauss first became member of a scientific society, the Russian Academy of Sciences, in 1802. Further memberships (corresponding, foreign or full) were awarded by the Academy of Sciences in Göttingen (1802/ 1807), the French Academy of Sciences (1804/ 1820), the Royal Society of London (1804), the Royal Prussian Academy in Berlin (1810), the National Academy of Science in Verona (1810), the Royal Society of Edinburgh (1820), the Bavarian Academy of Sciences of Munich (1820), the Royal Danish Academy in Copenhagen (1821), the Royal Astronomical Society in London (1821), the Royal Swedish Academy of Sciences (1821), the American Academy of Arts and Sciences in Boston (1822),  the Royal Bohemian Society of Sciences in Prague (1833), the Royal Academy of Science, Letters and Fine Arts of Belgium (1841/1845), the Royal Society of Sciences in Uppsala (1843), the Royal Irish Academy in Dublin (1843), the Royal Institute of the Netherlands (1845/ 1851), the Spanish Royal Academy of Sciences in Madrid (1850), the Russian Geographical Society (1851), the Imperial Academy of Sciences in Vienna (1848), the American Philosophical Society (1853), the Cambridge Philosophical Society, and the Royal Hollandish Society of Sciences in Haarlem.
+Both the University of Kazan and the Philosophy Faculty of the University of Prague appointed him honorary member in 1848.
+Gauss received the Lalande Prize from the French Academy of Science in 1809 for the theory of planets and the means of determining their orbits from only three observations, the Danish Academy of Science prize in 1823 for his memoir on conformal projection, and the Copley Medal from the Royal Society in 1838 for "his inventions and mathematical researches in magnetism".
+Gauss was appointed Knight of the French Legion of Honour in 1837, and became one of the first members of the Prussian Order Pour le Merite (Civil class) when it was established in 1842. He received the Order of the Crown of Westphalia (1810), the Danish Order of the Dannebrog (1817), the Hanoverian Royal Guelphic Order (1815), the Swedish Order of the Polar Star (1844), the Order of Henry the Lion (1849), and the Bavarian Maximilian Order for Science and Art (1853).
+The Kings of Hanover appointed him the honorary titles "Hofrath" (1816)  and "Geheimer Hofrath" (1845). In 1949, on the occasion of his golden doctor degree jubilee, he received honorary citizenship of both Brunswick and Göttingen. Soon after his death a medal was issued by order of King George V of Hanover with the back inscription dedicated "to the Prince of Mathematicians".
+The "Gauss-Gesellschaft Göttingen" ("Göttingen Gauss Society") was founded in 1964 for research on the life and work of Carl Friedrich Gauss and related persons. It publishes the Mitteilungen der Gauss-Gesellschaft (Communications of the Gauss Society).
+
+
+== Names and commemorations ==
+List of things named after Carl Friedrich Gauss
+
+
+== Selected writings ==
+
+
+=== Mathematics and astronomy ===
+
+1799: Demonstratio nova theorematis omnem functionem algebraicam rationalem integram unius variabilis in factores reales primi vel secundi gradus resolvi posse [New proof of the theorem that every integral algebraic function of one variable can be resolved into real factors of the first or second degree]. Helmstedt: C. G. Fleckeisen. (Doctoral thesis on the fundamental theorem of algebra, University of Helmstedt) Original book
+1816: "Demonstratio nova altera theorematis omnem functionem algebraicam rationalem integram unius variabilis in factores reales primi vel secundi gradus resolvi posse". Commentationes Societatis Regiae Scientiarum Gottingensis Recentiores. Comm. Class. Math. 3: 107–134. Original
+1816: "Theorematis de resolubilitate functionum algebraicarum integrarum in factores reales demonstratio tertia". Commentationes Societatis Regiae Scientiarum Gottingensis Recentiores. Comm. Class. Math. 3: 135–142. Original
+1850: "Beiträge zur Theorie der algebraischen Gleichungen". Abhandlungen der Königlichen Gesellschaft der Wissenschaften zu Göttingen. 4: 34–35.    Original (Lecture from 1849)
+Die vier Gauss'schen Beweise für die Zerlegung ganzer algebraischer Funktionen in reelle Faktoren ersten und zweiten Grades. (1799–1849) [The four Gaussian proofs of the fundamental theorem of algebra]. Translated by Netto. Leipzig: Wilhelm Engelmann. 1890. (German)
+1800: "Berechnung des Osterfestes" [Calculation of Easter]. Monatliche Correspondenz zur Beförderung der Erd- und Himmelskunde (in German). 2: 121–130. Original
+1801: Disquisitiones Arithmeticae. Leipzig: Gerh. Fleischer jun.
+Gauss, Carl Friedrich (1986). Disquisitiones Arithmeticae & other papers on number theory. Translated by Clarke, Arthur A. (2nd, corrected ed.). New York: Springer. doi:10.1007/978-1-4939-7560-0. ISBN 978-0-387-96254-2. (translated from the second German edition, Göttingen 1860)
+1802: "Berechnung des jüdischen Osterfestes" [Calculation of Jewish Easter]. Monatliche Correspondenz zur Beförderung der Erd- und Himmelskunde (in German). 5: 435–437. Original
+1804: "Über die Grenzen der geocentrischen Oerter der Planeten" [On the limits of the geocentric places of the planets]. Monatliche Correspondenz zur Beförderung der Erd- und Himmelskunde (in German). 10: 171–193. Original (on the Zodiacus)
+1808: "Theorematis arithmetici demonstratio nova". Commentationes Societatis Regiae Scientiarum Gottingensis. Comm. Math. 16: 69–74. Original (Introduces Gauss's lemma, uses it in the third proof of quadratic reciprocity)
+1808: Methodus peculiaris elevationem poli determinandi (in Latin). Göttingen.
+1809: Theoria motus corporum coelestium in sectionibus conicis solem ambientium (in Latin). Hamburg: Friedrich Perthes & Johann Heinrich Besser. Original book
+Theory of the Motion of Heavenly Bodies Moving about the Sun in Conic Sections. Translated by Davis, Charles Henry. Little, Brown & Co. 1857.
+Theory of the motion of the celestial bodies moving around the Sun in conic sections. Reprint of the 1809 original. (Theoria motus corporum coelestium in sectionibus conicis solem ambientium.) (Latin). Cambridge Library Collection - Mathematics. Cambridge University Press. 2011. ISBN 978-1-108-14311-0. Zbl 1234.01016.
+1811: "Disquisitio de elementis ellipticis Palladis ex oppositionibus annorum 1803, 1804, 1805, 1806, 1807, 1808, 1809". Commentationes Societatis Regiae Scientiarum Gottingensis Recentiores. Comm. Math. 1: 1–26. Original (from 1810) (Orbit of Pallas)
+1811: "Summatio quarundam serierum singularium". Commentationes Societatis Regiae Scientiarum Gottingensis Recentiores. Comm. Class. Math. 1: 1–40.  Original (from 1808) (Determination of the sign of the quadratic Gauss sum, uses this to give the fourth proof of quadratic reciprocity)
+1813: "Disquisitiones generales circa seriem infinitam 
+  
+    
+      
+        1
+        +
+        
+          
+            
+              α
+              β
+            
+            
+              γ
+              .1
+            
+          
+        
+        +
+        
+          
+            etc.
+          
+        
+      
+    
+    {\displaystyle 1+{\frac {\alpha \beta }{\gamma .1}}+{\mbox{etc.}}}
+  
+". Commentationes Societatis Regiae Scientiarum Gottingensis Recentiores. Comm. Class. Math. 2: 1–42. Original (from 1812, contains the Gauss's continued fraction)
+1816: "Methodus nova integralium valores per approximationem inveniendi". Commentationes Societatis Regiae Scientiarum Gottingensis Recentiores. Comm. Class. Math. 3: 39–76. Original (from 1814)
+1818: "Theorematis fundamentalis in doctrina de residuis quadraticis demonstrationes et ampliationes novae". Commentationes Societatis Regiae Scientiarum Gottingensis Recentiores. Comm. Class. Math. 4: 3–20. Original (from 1817) (Fifth and sixth proofs of quadratic reciprocity)
+1818: "Determinatio attractionis, quam in punctum positionis datae exerceret planeta, si eius massa per totamorbitam, ratione temporis, quo singulae partes describuntur, uniformiter esset dispertita". Commentationes Societatis Regiae Scientiarum Gottingensis Recentiores. Comm. Class. Math. 4: 21–48. Original (Only reference to the – mostly unpublished – work on the algorithm of the arithmetic-geometric mean.)
+1823: "Theoria combinationis observationum erroribus minimis obnoxiae. Pars Prior". Commentationes Societatis Regiae Scientiarum Gottingensis Recentiores. Comm. Class. Math. 5: 33–62.  Original (from 1821)
+1823: "Theoria combinationis observationum erroribus minimis obnoxiae. Pars Posterior". Commentationes Societatis Regiae Scientiarum Gottingensis Recentiores. Comm. Class. Math. 5: 63–90. Original
+1825: "Allgemeine Auflösung der Aufgabe die Theile einer gegebnen Fläche auf einer andern gegebnen Fläche so abzubilden dass die Abbildung dem Abgebildeten in den kleinsten Theilen ähnlich wird". Astronomische Abhandlungen. 3. Altona. (Prize winning essay from 1822 on conformal mapping)
+1828: Bestimmung des Breitenunterschiedes zwischen den Sternwarten von Göttingen und Altona durch Beobachtungen am Ramsdenschen Zenithsector [Determination of the Difference in Latitude between the Observatories of Göttingen and Altona by Observations with Ramsden's Zenith sector] (in German). Göttingen: Vandenhoeck und Ruprecht. 1828. Original book
+1828: Gauss, Carl Friedrich (1828). "Supplementum theoriae combinationis observationum erroribus minimis obnoxiae". Commentationes Societatis Regiae Scientiarum Gottingensis Recentiores. Comm. Class. Math. 6: 57–98. Bibcode:1828stco.book.....G. (from 1826)
+Gauss, Carl Friedrich; Stewart, G. W. (1995). Theory of the Combination of Observations Least Subject to Errors. Part One, Part Two, Supplement (Classics in Applied Mathematics). Translated by G. W. Stewart. Philadelphia: Society for Industrial and Applied Mathematics. doi:10.1137/1.9781611971248. ISBN 978-0-89871-347-3. (Three essays concerning the calculation of probabilities as the basis of the Gaussian law of error propagation)
+1828: "Disquisitiones generales circa superficies curvas". Commentationes Societatis Regiae Scientiarum Gottingensis Recentiores. Comm. Class. Math. 6: 99–146.    Original (from 1827)
+General Investigations of Curved Surfaces (PDF). Translated by J. C. Morehead and A. M. Hiltebeitel. The Princeton University Library. 1902.
+1828: "Theoria residuorum biquadraticorum, Commentatio prima". Commentationes Societatis Regiae Scientiarum Gottingensis Recentiores. Comm. Class. Math. 6: 27–56. Original (from 1825)
+1832: "Theoria residuorum biquadraticorum, Commentatio secunda". Commentationes Societatis Regiae Scientiarum Gottingensis Recentiores. Comm. Class. Math. 7: 89–148. Original (from 1831) (Introduces the Gaussian integers, states (without proof) the law of biquadratic reciprocity, proves the supplementary law for 1 + i)
+1845: "Untersuchungen über Gegenstände der Höheren Geodäsie. Erste Abhandlung". Abhandlungen der Königlichen Gesellschaft der Wissenschaften in Göttingen. Zweiter Band, von den Jahren 1842–1844: 3–46. Original (from 1843)
+1847: "Untersuchungen über Gegenstände der Höheren Geodäsie. Zweite Abhandlung". Abhandlungen der Königlichen Gesellschaft der Wissenschaften in Göttingen. Dritter Band, von den Jahren 1845–1847: 3–44. Original (from 1846)
+1848: Gauss (1848). "Schreiben des Herrn Geheimen Hofrathes Gauss an den Herausgeber" [Letter of Mr. Secret Councillor of the Court Gauss to the editor]. Astronomische Nachrichten (in German). 27: 1–3. Bibcode:1848AN.....27....1G. doi:10.1002/asna.18480270102. Original
+1903: Wissenschaftliches Tagebuch  (Klein, Felix, ed. (1903). "Gauß' wissenschaftliches Tagebuch 1796–1814". Mathematische Annalen (in Latin and German). 57: 1–34. doi:10.1007/BF01449013. S2CID 119641638.) Original book (from 1847, on the Zodiacus)
+Jeremy Gray (1984). "A commentary on Gauss's mathematical diary, 1796–1814". Expositiones Mathematicae. 2: 97–130.
+
+
+=== Physics ===
+1804: Fundamentalgleichungen für die Bewegung schwerer Körper auf der Erde ( in original book: Benzenberg, Johann Friedrich. Versuche über das Gesetz des Falls, über den Widerstand der Luft und über die Umdrehung der Erde [Experiments on the Law of falling Bodies, on the Resistance of Air, and of the Rotation of the Earth]. Dortmund: Gebrüder Mallinckrodt. pp. 363–371. Original)
+1813: "Theoria attractionis corporum sphaeroidicorum ellipticorum homogeneorum methodo nova tractata". Commentationes Societatis Regiae Scientiarum Gottingensis Recentiores. Comm. Class. Math. 2: 1–24. Original (contains Gauss's theorem of vector analysis)
+1817: "Ueber die achromatischen Doppelobjective besonders in Rücksicht der vollkommnern Aufhebung der Farbenzerstreuung" [On achromatic double lenses with special regard to a more complete dispersion of colours]. Zeitschrift für Astronomie und verwandte Wissenschaften (in German). IV: 345–351.
+1829: "Über ein neues allgemeines Grundgesetz der Mechanik" [On a new General Fundamental Law of Mechanics]. Journal für die reine und angewandte Mathematik. 1829 (4): 232–235. 1829. doi:10.1515/crll.1829.4.232. S2CID 199545985.
+1830: "Principia generalia theoriae figurae fluidorum in statu aequilibrii". Commentationes Societatis Regiae Scientiarum Gottingensis Recentiores. 7: 39–88. Original (from 1829)
+1841: "Intensitas vis magneticae terrestris ad mensuram absolutam revocata". Commentationes Societatis Regiae Scientiarum Gottingensis Recentiores. 8: 3–44.    Original (from 1832)
+The Intensity of the Earth's Magnetic Force Reduced to Absolute Measurement. Translated by Susan P. Johnson.
+1836: Erdmagnetismus und Magnetometer (Original book: H.C. Schumacher (ed.). Jahrbuch für 1836 (in German). Vol. 1836. Tübingen: J.G.Cotta'sche Buchhandlung. pp. 1–47.)
+1840: Allgemeine Lehrsätze in Beziehung auf die im verkehrten Verhältnis des Quadrats der Entfernung wirkenden Anziehungs- und Abstoßungskräfte (Original book: Allgemeine Lehrsätze in Beziehung auf die im verkehrten Verhältnis des Quadrats der Entfernung wirkenden Anziehungs- und Abstoßungskräfte [General Theorems concerning the attractive and repulsive Forces acting in reciprocal Proportions of quadratic Distances] (in German). Leipzig: Weidmannsche Buchhandlung. 1840.
+1843: "Dioptrische Untersuchungen" [Dioptrical Investigations]. Abhandlungen der Königlichen Gesellschaft der Wissenschaften in Göttingen (in German). Erster Band: 1–34. Original (from 1840)
+
+
+==== Together with Wilhelm Weber ====
+1837–1839: Weber, Wilhelm Eduard; Gauss, Carl Friedrich. Resultate aus den Beobachtungen des magnetischen Vereins im Jahre 1836–1838 (in German). Göttingen: Dieterichsche Buchhandlung. pp. 6 v.
+1840–1843: Weber, Wilhelm Eduard; Gauss, Carl Friedrich. Resultate aus den Beobachtungen des magnetischen Vereins im Jahre 1839–1841 (in German). Leipzig: Weidmannsche Verlagsbuchhandlung. pp. 6 v.
+1840: Weber, Wilhelm Eduard; Gauss, Carl Friedrich. Atlas des Erdmagnetismus nach den Elementen der Theorie entworfen. Supplement zu den Resultaten aus den Beobachtungen des magnetischen Vereins (in German). Leipzig: Weidmannsche Verlagsbuchhandlung. pp. 6 v.
+
+
+=== Collected works ===
+Königlich Preußische Akademie der Wissenschaften, ed. (1863–1933). Carl Friedrich Gauss. Werke (in Latin and German). Vol. 1–12. Göttingen: (diverse publishers). (includes unpublished literary estate)
+
+
+=== Correspondence ===
+Königlich Preußische Akademie der Wissenschaften, ed. (1880). Briefwechsel zwischen Gauss und Bessel (in German). Leipzig: Wilhelm Engelmann. (letters from December 1804 to August 1844)
+Schoenberg, Erich; Perlick, Alfons (1955). Unbekannte Briefe von C. F. Gauß und Fr. W. Bessel. Abhandlungen der Bayerischen Akademie der Wissenschaften, Math.-nat. Klasse, Neue Folge, No. 71 (in German). Munich: Verlag der Bayerischen Akademie der Wissenschaften. pp. 5–21. (letters to Boguslawski from February 1835 to January 1848)
+Schwemin, Friedhelm, ed. (2014). Der Briefwechsel zwischen Carl Friedrich Gauß und Johann Elert Bode. Acta Historica Astronomica (in German). Vol. 53. Leipzig: Akademische Verlaganstalt. ISBN 978-3-944913-43-8. (letters from February 1802 to October 1826)
+Franz Schmidt, Paul Stäckel, ed. (1899). Briefwechsel zwischen Carl Friedrich Gauss und Wolfgang Bolyai (in German). Leipzig: B.G. Teubner. (letters from September 1797 to February 1853; added letters of other correspondents)
+Axel Wittmann, ed. (2018). Obgleich und indeßen. Der Briefwechsel zwischen Carl Friedrich Gauss und Johann Franz Encke (in German). Remagen: Verlag Kessel. ISBN 978-3945941379. (letters from June 1810 to June 1854)
+Clemens Schaefer, ed. (1927). Briefwechsel zwischen Carl Friedrich Gauss und Christian Ludwig Gerling (in German). Berlin: Otto Elsner. (letters from June 1810 to June 1854)
+Karl Christian Bruhns, ed. (1877). Briefe zwischen A. v. Humboldt und Gauss (in German). Leipzig: Wilhelm Engelmann. (letters from July 1807 to December 1854; added letters of other correspondents)
+Reich, Karin; Roussanova, Elena (2018). Karl Kreil und der Erdmagnetismus. Seine Korrespondenz mit Carl Friedrich Gauß im historischen Kontext. Veröffentlichungen der Kommission für Geschichte der Naturwissenschaften, Mathematik und Medizin, No. 68 (in German). Vienna: Verlag der Österreichischen Akademie der Wissenschaften. (letters from 1835 to 1843)
+Gerardy, Theo, ed. (1959). Briefwechsel zwischen Carl Friedrich Gauß und Carl Ludwig von Lecoq. Abhandlungen der Akademie der Wissenschaften in Göttingen, Mathematisch-Physikalische Klasse, No. 4 (in German). Göttingen: Vandenhoeck & Ruprecht. pp. 37–63. (letters from February 1799 to September 1800)
+Forbes, Eric G. (1971). "The Correspondence between Carl Friedrich Gauss and the Rev. Nevil Maskelyne (1802–05)". Annals of Science. 27 (3): 213–237. doi:10.1080/00033797100203767.
+Cunningham, Clifford (2004). "Discovery of the Missing Correspondence between Carl Friedrich Gauss and the Rev. Nevil Maskelyne (1802–05)". Annals of Science. 61 (4): 469–481. doi:10.1080/00033790310001660164.
+Carl Schilling, ed. (1900). Briefwechsel zwischen Olbers und Gauss: Erste Abtheilung. Wilhelm Olbers. Sein Leben und seine Werke. Zweiter Band (in German). Berlin: Julius Springer. (letters from January 1802 to October 1819)
+Carl Schilling, ed. (1909). Briefwechsel zwischen Olbers und Gauss: Zweite Abtheilung. Wilhelm Olbers. Sein Leben und seine Werke. Zweiter Band (in German). Berlin: Julius Springer. (letters from January 1820 to May 1839; added letters of other correspondents)
+Christian August Friedrich Peters, ed. (1860–1865). Briefwechsel zwischen C. F. Gauss und H. C. Schumacher (in German). Altona: Gustav Esch.
+Volumes 1+2 (letters from April 1808 to March 1836)
+Volumes 3+4 (letters from March 1836 to April 1845)
+Volumes 5+6 (letters from April 1845 to November 1850)
+Poser, Hans, ed. (1987). Briefwechsel zwischen Carl Friedrich Gauß und Eberhard August Zimmermann. Abhandlungen der Akademie der Wissenschaften in Göttingen, Mathematisch-Physikalische Klasse, Folge 3, No. 39 (in German). Göttingen: Vandenhoeck & Ruprecht. ISBN 978-3525821169. (letters from 1795 to 1815)
+The Göttingen Academy of Sciences and Humanities provides a complete collection of the known letters from and to Carl Friedrich Gauss that is accessible online. The literary estate is kept and provided by the Göttingen State and University Library. Written materials from Carl Friedrich Gauss and family members can also be found in the municipal archive of Brunswick.
+
+
+== References ==
+
+
+=== Notes ===
+
+
+=== Citations ===
+
+
+=== Sources ===
+
+
+== Further reading ==
+
+
+== External links ==
