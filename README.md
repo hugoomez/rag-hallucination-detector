@@ -277,3 +277,45 @@ controlled conditions rather than a scripted example:
 > The corpus's actual answer is **November 17, 1938** — the model fabricated a wrong
 > date wholesale (and one that predates his first marriage), and the detector caught it.
 
+## Run the demo locally with Docker (Phase 6)
+
+Both Phase 6 services — the FastAPI detector wrapper (`api/main.py`) and the
+Gradio demo (`app/app.py`) — are packaged for one-command local reproduction.
+Public hosting was dropped per
+[ADR-018](docs/decisions.md#adr-018-skip-public-hf-spaces-deployment-in-favor-of-local-docker-reproduction)
+(HF now PRO-gates personal Gradio Spaces); Docker gives an identical experience
+locally with no account or cost.
+
+**Prerequisites:** Docker + Docker Compose.
+
+```bash
+git clone https://github.com/hugoomez/rag-hallucination-detector.git
+cd rag-hallucination-detector
+
+cp .env.example .env
+# Edit .env and set GROQ_API_KEY (free key from https://console.groq.com/keys).
+# Optional: the demo still runs without it — cached RAG presets work; only live
+# custom questions are gated.
+
+docker compose up          # builds once, starts both services
+```
+
+Then open:
+
+| Service | URL | What it is |
+|---------|-----|------------|
+| **Gradio demo** | http://localhost:7860 | Paste-your-own + live RAG tabs |
+| **API docs** | http://localhost:8000/docs | Interactive Swagger UI for `POST /detect` |
+| **API health** | http://localhost:8000/health | `{"status","model_loaded"}` |
+
+Run just one service with `docker compose up app` or `docker compose up api`.
+
+**Notes:**
+- **Models are not baked into the image.** On first start they download from the
+  HF Hub (~600 MB: the token-level detector, its tokenizer, and the MiniLM
+  retriever) into a named `hf-cache` volume, so subsequent `up`s reuse them and
+  start fast.
+- **Secrets stay out of the image.** `GROQ_API_KEY` is read from your local
+  `.env` at runtime via Compose, never built in.
+- The image installs **CPU-only PyTorch**, so it stays small and needs no GPU.
+

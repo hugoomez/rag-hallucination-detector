@@ -1,0 +1,36 @@
+# Dependency set for the local Docker images (API + Gradio demo), per ADR-018.
+# Adapted from the clean-env-verified trimmed set used for the (abandoned) HF
+# Space attempt, plus the packages the Space SDK used to provide (gradio) and
+# the API stack (fastapi/uvicorn/pydantic). Verified to import app.app cleanly.
+#
+# CPU-only torch: the default linux/x86 `torch` wheel pulls ~2-3GB of CUDA libs
+# this demo never uses. The index URL below fetches the much smaller CPU build.
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# Model + inference
+torch>=2.2
+transformers>=4.48,<5.0   # 4.48 adds ModernBERT; <5 keeps huggingface-hub<1.0
+sentencepiece>=0.2        # tokenizer backend
+protobuf>=4.25            # tokenizer backend
+accelerate>=0.33          # expected by transformers.from_pretrained in practice
+
+# Required only so predict.py imports cleanly: it pulls merge_predicted_spans
+# from train_token_level.py, which drags in the training stack. Unused at runtime.
+datasets>=2.20
+scikit-learn>=1.4
+pandas>=2.0
+numpy>=1.26
+
+# Retrieval (RAG)
+sentence-transformers>=3.0
+faiss-cpu>=1.8
+
+# Generator + Gradio demo
+groq>=1.0
+python-dotenv>=1.0
+gradio>=5,<6              # Docker must install it (HF Space SDK used to provide it)
+
+# API (api/main.py)
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.0
