@@ -20,6 +20,7 @@ import pytest
 
 from src.rag.pipeline import (
     DEFAULT_GROQ_MODEL,
+    NO_CONTEXT_PROMPT,
     RAG_PROMPT,
     GenerationError,
     RAGPipeline,
@@ -138,6 +139,51 @@ def test_answer_passes_constructor_k_to_retriever():
     pipeline.answer("any question")
 
     assert retriever.calls[-1]["k"] == 2
+
+
+def test_normal_answer_has_no_ablation_key():
+    pipeline, *_ = _build_pipeline()
+
+    result = pipeline.answer("Who proved quadratic reciprocity?")
+
+    assert "ablation" not in result
+
+
+# --- 2b. answer(no_context=True): ADR-016 ablation mode ---------------------------------
+
+
+def test_no_context_ablation_uses_no_context_prompt_not_rag_prompt():
+    pipeline, _retriever, _detector, client = _build_pipeline()
+
+    pipeline.answer("Who proved quadratic reciprocity?", no_context=True)
+
+    call = client.chat.completions.calls[-1]
+    expected_prompt = NO_CONTEXT_PROMPT.format(question="Who proved quadratic reciprocity?")
+    assert call["messages"] == [{"role": "user", "content": expected_prompt}]
+    # RAG_PROMPT's grounding/refusal instruction must never leak into the ablation prompt.
+    assert "ONLY the information in the context" not in call["messages"][0]["content"]
+    assert "cannot answer this question from the provided context" not in call["messages"][0]["content"]
+
+
+def test_no_context_ablation_detector_still_receives_real_retrieved_context():
+    pipeline, retriever, detector, _client = _build_pipeline()
+
+    pipeline.answer("Who proved quadratic reciprocity?", no_context=True)
+
+    detect_call = detector.calls[-1]
+    assert detect_call["context"] == build_context(_RESULTS)
+    assert detect_call["context"] != ""
+    # The retriever still ran for real -- ablation skips showing context to the
+    # generator, not retrieving it.
+    assert retriever.calls[-1] == {"query": "Who proved quadratic reciprocity?", "k": 3}
+
+
+def test_no_context_ablation_marks_result_dict():
+    pipeline, *_ = _build_pipeline()
+
+    result = pipeline.answer("Who proved quadratic reciprocity?", no_context=True)
+
+    assert result["ablation"] is True
 
 
 # --- 3. generate: prompt construction and Groq call parameters -------------------------

@@ -27,6 +27,13 @@ the generator saw.
 
 GROQ_API_KEY is loaded from .env via python-dotenv inside create_groq_client() (never at
 import time, so tests stay env-free) and is never printed or logged anywhere.
+
+RAGPipeline.answer(question, no_context=True) runs the ADR-016 ablation mode: the
+retriever still runs for real, so the detector checks the answer against genuine
+retrieved context, but the generator is prompted with NO_CONTEXT_PROMPT instead of
+RAG_PROMPT and never sees that context -- forcing it to answer from parametric
+knowledge alone. The resulting context/answer mismatch is what the demo needs to show
+the detector catching a real, unscripted hallucination (see docs/decisions.md ADR-016).
 """
 
 import os
@@ -51,6 +58,14 @@ Do not use any outside knowledge. Answer concisely, in complete sentences.
 
 Context:
 {context}
+
+Question: {question}
+
+Answer:"""
+
+NO_CONTEXT_PROMPT = """\
+Answer the following question using your own knowledge. Answer concisely, in complete
+sentences.
 
 Question: {question}
 
@@ -107,13 +122,24 @@ class RAGPipeline:
         self.k = k
         self.model_name = model_name
 
-    def generate(self, question: str, context: str) -> str:
-        """Ask the Groq-served model to answer `question` from `context` alone.
+    def generate(self, question: str, context: str | None = None) -> str:
+        """Ask the Groq-served model to answer `question`.
+
+        With `context` given, uses RAG_PROMPT so the model is grounded and instructed to
+        refuse when the context doesn't cover the question. With `context=None` (the
+        ADR-016 ablation path), uses NO_CONTEXT_PROMPT instead -- a plain question with no
+        grounding instruction, so the model answers from parametric knowledge rather than
+        (incorrectly) triggering RAG_PROMPT's refusal sentence over an empty context.
 
         The SDK already retries connection errors and 429s with backoff, so this layer
         only translates final failures into actionable, key-free GenerationErrors
         (chained with `from` so tracebacks keep the original exception).
         """
+        prompt = (
+            NO_CONTEXT_PROMPT.format(question=question)
+            if context is None
+            else RAG_PROMPT.format(context=context, question=question)
+        )
         # Reasoning knobs are per-model-family (Groq 400s on mismatches), so they are
         # applied conditionally to keep model_name a true one-string swap: gpt-oss takes
         # reasoning_effort/include_reasoning; qwen/deepseek take reasoning_format, and
@@ -129,7 +155,7 @@ class RAGPipeline:
         try:
             response = self.groq_client.chat.completions.create(
                 model=self.model_name,
-                messages=[{"role": "user", "content": RAG_PROMPT.format(context=context, question=question)}],
+                messages=[{"role": "user", "content": prompt}],
                 temperature=DEFAULT_TEMPERATURE,
                 max_completion_tokens=DEFAULT_MAX_COMPLETION_TOKENS,
                 **reasoning_kwargs,
@@ -155,32 +181,41 @@ class RAGPipeline:
             )
         return content.strip()
 
-    def answer(self, question: str) -> dict:
+    def answer(self, question: str, no_context: bool = False) -> dict:
         """Run the full pipeline and return the demo-facing result dict.
 
-        The detector judges the generated answer against the exact context string the
-        generator saw (source tags included), so the verdict and the generation are
-        grounded in the same evidence.
+        In normal operation the detector judges the generated answer against the exact
+        context string the generator saw, so the verdict and the generation are grounded
+        in the same evidence. With `no_context=True` (ADR-016 ablation), the retriever
+        still runs and the detector still checks the answer against that REAL retrieved
+        context, but the generator never saw it -- so any mismatch the detector flags is
+        a genuine, unscripted hallucination rather than a fabricated demo case.
         """
         results = self.retriever.retrieve(question, k=self.k)
         context = build_context(results)
-        answer = self.generate(question, context)
+        answer = self.generate(question, context=None if no_context else context)
         verdict = self.detector.predict(context, answer)
-        return {
+        result = {
             "question": question,
             "contexts": [{"source": r.chunk.source, "text": r.chunk.text, "score": r.score} for r in results],
             "answer": answer,
             "verdict": verdict,
         }
+        if no_context:
+            result["ablation"] = True
+        return result
 
 
 def main() -> None:
-    """Demo entrypoint: real retriever + detector + Groq client over three probe questions.
+    """Demo entrypoint: real retriever + detector + Groq client over probe questions.
 
-    The questions are chosen to exercise the three interesting outcomes: answerable from
-    the corpus (expect a grounded answer), about a corpus mathematician but absent from
-    the corpus (hallucination bait -- the detector should light up if the model invents),
-    and fully out-of-corpus (the prompt's sanctioned refusal is the correct behavior).
+    The grounded questions are chosen to exercise the three interesting outcomes:
+    answerable from the corpus (expect a grounded answer), about a corpus mathematician
+    but absent from the corpus (hallucination bait -- the detector should light up if
+    the model invents), and fully out-of-corpus (the prompt's sanctioned refusal is the
+    correct behavior). The last question repeats the first in ADR-016 ablation mode: same
+    real retrieved context, but the model never sees it, giving a real, unscripted
+    hallucination case for the detector to catch (see docs/decisions.md ADR-016).
     """
     from src.models.predict import Detector
     from src.rag.retriever import Retriever
@@ -192,14 +227,16 @@ def main() -> None:
     pipeline = RAGPipeline(retriever, detector, client)
 
     questions = [
-        "What did Gauss contribute to number theory?",
-        "What prizes did Emmy Noether win for her work on topology?",
-        "Who won the 2022 FIFA World Cup?",
+        ("What did Gauss contribute to number theory?", False),
+        ("What prizes did Emmy Noether win for her work on topology?", False),
+        ("Who won the 2022 FIFA World Cup?", False),
+        ("What did Gauss contribute to number theory?", True),
     ]
-    for question in questions:
-        print(f"\n{'=' * 70}\nQ: {question}")
+    for question, no_context in questions:
+        label = "  [ABLATION: no-context]" if no_context else ""
+        print(f"\n{'=' * 70}\nQ: {question}{label}")
         try:
-            result = pipeline.answer(question)
+            result = pipeline.answer(question, no_context=no_context)
         except GenerationError as exc:
             print(f"  generation failed: {exc}")
             continue
@@ -207,6 +244,8 @@ def main() -> None:
         verdict = result["verdict"]
         print(f"A: {result['answer']}")
         print(f"   sources: {sources}")
+        if result.get("ablation"):
+            print("   (ablation mode: model did NOT see the context above)")
         print(f"   verdict: {verdict['color']} score={verdict['score']:.4f}")
         for span in verdict["spans"]:
             print(f"   span [{span['start']:>4},{span['end']:>4}) -> {span['text']!r}")
