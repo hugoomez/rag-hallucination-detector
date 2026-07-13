@@ -51,11 +51,15 @@ class TestBuildPredictionRows:
         )
         assert list(df.columns) == UNIFIED_COLUMNS
         assert list(df["row_index"]) == [0, 1, 2]
-        assert set(df["split"]) == {"test"}
+        assert set(df["split"]) == {"test"}  # split defaults to test
         assert set(df["system"]) == {"sys_x"}
         assert df["y_true"].dtype.kind == "i"
         assert df["y_pred"].dtype.kind == "i"
         assert df["y_score"].dtype.kind == "f"
+
+    def test_split_column_reflects_argument(self):
+        df = cp.build_prediction_rows("sys_x", [10, 11], ["QA", "QA"], [0, 1], [0, 1], [0.1, 0.9], split="val")
+        assert set(df["split"]) == {"val"}
 
     def test_length_mismatch_raises(self):
         with pytest.raises(ValueError):
@@ -63,8 +67,8 @@ class TestBuildPredictionRows:
 
 
 class TestMergePredictions:
-    def _rows(self, system, y_pred):
-        return cp.build_prediction_rows(system, [10], ["QA"], [1], [y_pred], [0.5])
+    def _rows(self, system, y_pred, split="test"):
+        return cp.build_prediction_rows(system, [10], ["QA"], [1], [y_pred], [0.5], split=split)
 
     def test_merge_into_empty(self):
         merged = cp.merge_predictions(None, self._rows("sys_a", 1))
@@ -80,6 +84,33 @@ class TestMergePredictions:
     def test_new_system_appends(self):
         merged = cp.merge_predictions(self._rows("sys_a", 0), self._rows("sys_c", 1))
         assert sorted(merged["system"].unique()) == ["sys_a", "sys_c"]
+
+    def test_collecting_val_preserves_existing_test_rows(self):
+        # The reason merge keys on (system, split): a system's val run must not wipe its test rows.
+        existing = self._rows("sys_a", 0, split="test")
+        merged = cp.merge_predictions(existing, self._rows("sys_a", 1, split="val"))
+        assert len(merged) == 2
+        assert merged.loc[merged["split"] == "test", "y_pred"].item() == 0  # test untouched
+        assert merged.loc[merged["split"] == "val", "y_pred"].item() == 1  # val added
+
+    def test_rerun_replaces_only_matching_system_split(self):
+        existing = pd.concat(
+            [self._rows("sys_a", 0, "test"), self._rows("sys_a", 0, "val"), self._rows("sys_b", 0, "val")],
+            ignore_index=True,
+        )
+        merged = cp.merge_predictions(existing, self._rows("sys_a", 1, "val"))
+        assert len(merged) == 3
+        assert merged.loc[(merged["system"] == "sys_a") & (merged["split"] == "val"), "y_pred"].item() == 1
+        assert merged.loc[(merged["system"] == "sys_a") & (merged["split"] == "test"), "y_pred"].item() == 0
+        assert merged.loc[(merged["system"] == "sys_b") & (merged["split"] == "val"), "y_pred"].item() == 0
+
+    def test_split_argument_parses(self, monkeypatch):
+        monkeypatch.setattr("sys.argv", ["collect_predictions.py", "baseline", "--split", "val"])
+        assert cp.parse_args().split == "val"
+
+    def test_split_defaults_to_test(self, monkeypatch):
+        monkeypatch.setattr("sys.argv", ["collect_predictions.py", "baseline"])
+        assert cp.parse_args().split == "test"
 
 
 class TestParseArgs:

@@ -30,11 +30,16 @@ Modes:
     merge       Fold a unified-schema parquet produced elsewhere (e.g. downloaded from a
                 Kaggle session) into the local accumulating file.
 
+Every mode takes --split {val,test} (default test): it selects the split's parquet/scores
+file and writes that value into the 'split' column. Re-running a (system, split) pair
+replaces only those rows, so val and test accumulate side by side in the one file.
+
 Examples:
     python scripts/collect_predictions.py baseline
-    python scripts/collect_predictions.py track_a
+    python scripts/collect_predictions.py baseline --split val
+    python scripts/collect_predictions.py track_a --split val
     python scripts/collect_predictions.py approach_1
-    python scripts/collect_predictions.py track_b_modernbert
+    python scripts/collect_predictions.py track_b_modernbert --split val
     python scripts/collect_predictions.py merge --input kaggle_output/unified_predictions.parquet
 """
 
@@ -69,17 +74,35 @@ SYSTEM_TRACK_A = "track_a_deberta"
 SYSTEM_APPROACH_1 = "approach_1_modernbert"
 SYSTEM_TRACK_B = "track_b_modernbert"
 
-NLI_SCORES_PATH = Path("results/nli_scores_test.json")
+NLI_SCORES_PATHS = {
+    "val": Path("results/nli_scores_val.json"),
+    "test": Path("results/nli_scores_test.json"),
+}
 BASELINE_METRICS_PATH = Path("results/baseline_nli_metrics.json")
 HUB_DEFAULTS = {
     SYSTEM_TRACK_A: "hugoomezz/deberta-v3-ragtruth-hallucination",
     SYSTEM_APPROACH_1: "hugoomezz/deberta-v3-modernbert-ragtruth-hallucination",
     SYSTEM_TRACK_B: "hugoomezz/modernbert-ragtruth-token-level-binary",
 }
-TEST_PATH_DEFAULTS = {
-    SYSTEM_TRACK_A: "data/processed/response_level_test.parquet",
-    SYSTEM_APPROACH_1: "data/processed/response_level_modernbert_test.parquet",
-    SYSTEM_TRACK_B: "data/processed/token_level_binary_test.parquet",
+# Per-system parquet for each split. row_index (input order) is a valid cross-system
+# join key on TEST (all systems iterate the identical 2700-row set in the same order),
+# but on VAL only the three modernbert-era systems (baseline/approach_1/track_b) share
+# one ordering; track_a's val parquet was preprocessed with a different within-source
+# response order (1 missing response + 1 swapped pair), so it must not be row_index-joined
+# against the others on val. See docs/decisions.md and tune_threshold_and_ensemble.py.
+SPLIT_PATH_DEFAULTS = {
+    SYSTEM_TRACK_A: {
+        "val": "data/processed/response_level_val.parquet",
+        "test": "data/processed/response_level_test.parquet",
+    },
+    SYSTEM_APPROACH_1: {
+        "val": "data/processed/response_level_modernbert_val.parquet",
+        "test": "data/processed/response_level_modernbert_test.parquet",
+    },
+    SYSTEM_TRACK_B: {
+        "val": "data/processed/token_level_binary_val.parquet",
+        "test": "data/processed/token_level_binary_test.parquet",
+    },
 }
 BATCH_SIZE = 32
 
@@ -100,12 +123,13 @@ def baseline_y_score(sentence_scores: list) -> float:
     return max(max(float(con), 1.0 - float(ent)) for ent, con in sentence_scores)
 
 
-def build_prediction_rows(system, source_ids, task_types, y_true, y_pred, y_score) -> pd.DataFrame:
+def build_prediction_rows(system, source_ids, task_types, y_true, y_pred, y_score, split="test") -> pd.DataFrame:
     """Assemble one system's rows in the unified schema, with positional row_index.
 
     row_index (0..n-1, input order) is the per-row key: source_id is NOT unique in
-    RAGTruth (6 model responses per source). All systems iterate the same deterministic
-    2700-row test set, so row_index also serves as the cross-system join key.
+    RAGTruth (6 model responses per source). On the test split all systems iterate the
+    same deterministic 2700-row set, so row_index also serves as the cross-system join
+    key; on val that only holds within the modernbert-era systems (see SPLIT_PATH_DEFAULTS).
     """
     lengths = {len(source_ids), len(task_types), len(y_true), len(y_pred), len(y_score)}
     if len(lengths) != 1:
@@ -117,7 +141,7 @@ def build_prediction_rows(system, source_ids, task_types, y_true, y_pred, y_scor
             "row_index": range(n_rows),
             "source_id": source_ids,
             "task_type": task_types,
-            "split": ["test"] * n_rows,
+            "split": [split] * n_rows,
             "y_true": pd.array(y_true, dtype="int64"),
             "y_pred": pd.array(y_pred, dtype="int64"),
             "y_score": pd.array(y_score, dtype="float64"),
@@ -126,25 +150,33 @@ def build_prediction_rows(system, source_ids, task_types, y_true, y_pred, y_scor
 
 
 def merge_predictions(existing: pd.DataFrame | None, new: pd.DataFrame) -> pd.DataFrame:
-    """Replace rows for systems present in `new`; keep every other system's rows.
+    """Replace rows for the (system, split) pairs present in `new`; keep everything else.
 
-    This is what makes stage-wise collection safe: re-running one system (or folding in
-    a file from another Kaggle session) never drops previously collected systems.
+    This is what makes stage-wise collection safe: re-running one system on one split (or
+    folding in a file from another Kaggle session) never drops previously collected
+    (system, split) combinations. Keying on the pair — not the system alone — is what lets
+    `--split val` accumulate alongside a system's existing test rows instead of wiping them.
     """
     if existing is None:
         return new.reset_index(drop=True)
-    replaced = set(new["system"].unique())
-    kept = existing[~existing["system"].isin(replaced)]
+    replaced = set(zip(new["system"], new["split"]))
+    keep_mask = [(system, split) not in replaced for system, split in zip(existing["system"], existing["split"])]
+    kept = existing[pd.Series(keep_mask, index=existing.index)]
     return pd.concat([kept, new], ignore_index=True)
 
 
-def collect_baseline(scores_path: Path = NLI_SCORES_PATH, metrics_path: Path = BASELINE_METRICS_PATH) -> pd.DataFrame:
+def collect_baseline(
+    split: str = "test", scores_path: Path | None = None, metrics_path: Path = BASELINE_METRICS_PATH
+) -> pd.DataFrame:
     """Aggregate the per-sentence NLI scores to response level in the unified schema.
 
-    Model-free: reuses results/nli_scores_test.json (sentence_scores are
+    Model-free: reuses results/nli_scores_{split}.json (sentence_scores are
     [max_entailment, max_contradiction] pairs, ADR-007) and the tuned thresholds
-    already selected on the validation split (results/baseline_nli_metrics.json).
+    already selected on the validation split (results/baseline_nli_metrics.json). The
+    tuned thresholds are split-independent, so the same operating point is applied to
+    whichever split's scores are aggregated.
     """
+    scores_path = scores_path or NLI_SCORES_PATHS[split]
     rows = json.loads(Path(scores_path).read_text(encoding="utf-8"))
     thresholds = json.loads(Path(metrics_path).read_text(encoding="utf-8"))["best_thresholds"]
 
@@ -163,6 +195,7 @@ def collect_baseline(scores_path: Path = NLI_SCORES_PATH, metrics_path: Path = B
         y_true=[int(row["label_response"]) for row in rows],
         y_pred=y_pred,
         y_score=y_score,
+        split=split,
     )
 
 
@@ -173,9 +206,9 @@ def save_merged(new_df: pd.DataFrame, unified_path: Path) -> pd.DataFrame:
     merged = merge_predictions(existing, new_df)
     unified_path.parent.mkdir(parents=True, exist_ok=True)
     merged.to_parquet(unified_path, index=False)
-    print(f"Saved {unified_path} — rows per system:")
-    for system, count in merged["system"].value_counts().sort_index().items():
-        print(f"  {system}: {count}")
+    print(f"Saved {unified_path} — rows per (system, split):")
+    for (system, split), count in merged.groupby(["system", "split"]).size().sort_index().items():
+        print(f"  {system} [{split}]: {count}")
     return merged
 
 
@@ -210,7 +243,14 @@ def load_test_df(path: str) -> pd.DataFrame:
     return df
 
 
-def collect_transformer(system: str, hub_model_id: str, test_path: str, limit: int | None = None, tokenizer_id: str | None = None) -> pd.DataFrame:
+def collect_transformer(
+    system: str,
+    hub_model_id: str,
+    test_path: str,
+    split: str = "test",
+    limit: int | None = None,
+    tokenizer_id: str | None = None,
+) -> pd.DataFrame:
     """Hub-checkpoint inference over a test parquet, in the unified schema.
 
     tokenizer_id overrides where the tokenizer is loaded from: the collator only needs
@@ -238,6 +278,7 @@ def collect_transformer(system: str, hub_model_id: str, test_path: str, limit: i
         y_true=df["label_response"].astype(int).tolist(),
         y_pred=y_pred,
         y_score=y_score,
+        split=split,
     )
 
 
@@ -293,7 +334,7 @@ def run_token_inference_with_probs(
 
 
 def collect_track_b_modernbert(
-    hub_model_id: str, test_path: str, limit: int | None = None, tokenizer_id: str | None = None
+    hub_model_id: str, test_path: str, split: str = "test", limit: int | None = None, tokenizer_id: str | None = None
 ) -> pd.DataFrame:
     """Hub-checkpoint token-classification inference over the binary token-level test parquet.
 
@@ -333,6 +374,7 @@ def collect_track_b_modernbert(
         y_true=y_true,
         y_pred=y_pred,
         y_score=y_score,
+        split=split,
     )
 
 
@@ -342,12 +384,21 @@ MODE_TO_SYSTEM = {"track_a": SYSTEM_TRACK_A, "approach_1": SYSTEM_APPROACH_1, "t
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("mode", choices=["baseline", "track_a", "approach_1", "track_b_modernbert", "merge"])
+    parser.add_argument(
+        "--split",
+        choices=["val", "test"],
+        default="test",
+        help="Which split to collect (default test). Writes the value into the 'split' column; "
+        "picks the split's parquet/scores file for each mode. Ignored by merge mode.",
+    )
     parser.add_argument("--unified_path", default=str(UNIFIED_PREDICTIONS_PATH))
     parser.add_argument(
         "--hub_model_id", help="Override the default Hub repo for track_a/approach_1/track_b_modernbert."
     )
     parser.add_argument(
-        "--test_path", help="Override the default test parquet for track_a/approach_1/track_b_modernbert."
+        "--test_path",
+        help="Override the default parquet for track_a/approach_1/track_b_modernbert "
+        "(otherwise resolved from the mode and --split).",
     )
     parser.add_argument(
         "--tokenizer_id",
@@ -368,11 +419,12 @@ def main() -> None:
     os.chdir(REPO_ROOT)
 
     if args.mode == "baseline":
-        new_df = collect_baseline()
+        new_df = collect_baseline(split=args.split)
     elif args.mode == "track_b_modernbert":
         new_df = collect_track_b_modernbert(
             hub_model_id=args.hub_model_id or HUB_DEFAULTS[SYSTEM_TRACK_B],
-            test_path=args.test_path or TEST_PATH_DEFAULTS[SYSTEM_TRACK_B],
+            test_path=args.test_path or SPLIT_PATH_DEFAULTS[SYSTEM_TRACK_B][args.split],
+            split=args.split,
             limit=args.limit,
             tokenizer_id=args.tokenizer_id,
         )
@@ -381,7 +433,8 @@ def main() -> None:
         new_df = collect_transformer(
             system=system,
             hub_model_id=args.hub_model_id or HUB_DEFAULTS[system],
-            test_path=args.test_path or TEST_PATH_DEFAULTS[system],
+            test_path=args.test_path or SPLIT_PATH_DEFAULTS[system][args.split],
+            split=args.split,
             limit=args.limit,
             tokenizer_id=args.tokenizer_id,
         )
