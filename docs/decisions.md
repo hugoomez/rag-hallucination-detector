@@ -565,33 +565,3 @@ against genuine context), but `generate()` is called with the separate
 NO_CONTEXT_PROMPT template instead of RAG_PROMPT, so the model never sees
 that context. The returned dict carries `"ablation": true` when used.
 Covered by hermetic tests in tests/test_pipeline.py.
-
-## ADR-017: Threshold tuning failed to generalize; simple ensemble gave a real, modest win
-
-**Context:** Following the research report's recommendations #1 (threshold
-tuning) and #4 (simple ensemble), both were tuned strictly on val and applied
-to test exactly once, per this project's established discipline.
-
-**Findings:**
-- Threshold tuning did NOT generalize. Global threshold tuned on val (0.45,
-  val-optimal) scored F1=0.7609 on test, slightly WORSE than the untuned
-  default (0.5, F1=0.7619). Per-task thresholds performed worse still
-  (F1=0.7462), driven by Summary overfitting (best val F1 only 0.60 on a
-  small ~500-row subset). Smaller, noisier subsets amplify the risk of
-  fitting val-specific noise rather than a transferable pattern.
-- The 3-system ensemble (baseline_nli, approach_1_modernbert,
-  track_b_modernbert; track_a_deberta excluded due to val misalignment) DID
-  generalize: val F1 0.7997 -> test F1 0.7701, beating Track B alone (0.7619)
-  by +0.82 points, mainly via improved recall on Summary and QA -- directly
-  addressing Phase 4's diagnosed weak spots.
-
-**Decision:** Adopt the 3-system ensemble's exact weights/threshold as
-documented in results/threshold_ensemble_tuning.json as an available
-"best measured" configuration, reported alongside Track B alone in the
-README comparison table. Do NOT adopt tuned thresholds (global or per-task)
-as the new operating point for Track B -- the untuned 0.5 default remains
-the reported operating point for that model specifically.
-
-**Status:** Complete. Whether the ensemble becomes the model that powers the
-live RAG demo (Phase 5/6) is a separate decision (three models running per
-prediction vs. one -- complexity/latency trade-off), tracked separately.
