@@ -207,15 +207,19 @@ class RAGPipeline:
 
 
 def main() -> None:
-    """Demo entrypoint: real retriever + detector + Groq client over probe questions.
+    """Demo entrypoint: real retriever + detector + Groq client over three fixed examples.
 
-    The grounded questions are chosen to exercise the three interesting outcomes:
-    answerable from the corpus (expect a grounded answer), about a corpus mathematician
-    but absent from the corpus (hallucination bait -- the detector should light up if
-    the model invents), and fully out-of-corpus (the prompt's sanctioned refusal is the
-    correct behavior). The last question repeats the first in ADR-016 ablation mode: same
-    real retrieved context, but the model never sees it, giving a real, unscripted
-    hallucination case for the detector to catch (see docs/decisions.md ADR-016).
+    Grounded, live testing across ~12 adversarial bait questions found gpt-oss-20b never
+    naturally hallucinates under RAG_PROMPT's grounding contract (see docs/decisions.md
+    ADR-016) -- good news for the pipeline, but it means a grounded demo alone can't show
+    the detector catching a real hallucination. So the third example uses the ADR-016
+    no-context ablation instead: the retriever still runs for real, but the generator
+    never sees that context, giving a genuine (not scripted/canned) mismatch for the
+    detector to catch under controlled conditions. This specific question (von Neumann's
+    exact second-marriage date) was chosen because live probing across several
+    mathematicians found headline achievements (e.g. Gauss's core theorems) too
+    well-documented for gpt-oss-20b to get wrong even blind -- obscure, specific
+    biographical details are what reliably exposes the parametric-knowledge gap.
     """
     from src.models.predict import Detector
     from src.rag.retriever import Retriever
@@ -226,15 +230,17 @@ def main() -> None:
     detector = Detector.from_pretrained()
     pipeline = RAGPipeline(retriever, detector, client)
 
-    questions = [
-        ("What did Gauss contribute to number theory?", False),
-        ("What prizes did Emmy Noether win for her work on topology?", False),
-        ("Who won the 2022 FIFA World Cup?", False),
-        ("What did Gauss contribute to number theory?", True),
+    examples = [
+        ("[1] GROUNDED -- in-corpus", "What did Gauss contribute to number theory?", False),
+        ("[2] GROUNDED -- out-of-corpus refusal", "Who won the 2022 FIFA World Cup?", False),
+        (
+            "[3] ABLATION -- no-context (primary hallucination demo)",
+            "On what exact date did John von Neumann marry his second wife, Klara Dan?",
+            True,
+        ),
     ]
-    for question, no_context in questions:
-        label = "  [ABLATION: no-context]" if no_context else ""
-        print(f"\n{'=' * 70}\nQ: {question}{label}")
+    for label, question, no_context in examples:
+        print(f"\n{'=' * 70}\n{label}\nQ: {question}")
         try:
             result = pipeline.answer(question, no_context=no_context)
         except GenerationError as exc:
