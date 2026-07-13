@@ -11,6 +11,7 @@ seqeval>=1.2
 # Retrieval (RAG)
 sentence-transformers>=3.0
 faiss-cpu>=1.8
+groq>=1.0  # generator LLM client for the Phase 5 pipeline; SDK is stable post-1.0
 
 # Datos y análisis
 pandas>=2.0
