@@ -13,6 +13,11 @@ sentence-transformers>=3.0
 faiss-cpu>=1.8
 groq>=1.0  # generator LLM client for the Phase 5 pipeline; SDK is stable post-1.0
 
+# API (Phase 6)
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.0  # already pulled by fastapi; pinned since we author v2 models against it
+
 # Datos y análisis
 pandas>=2.0
 numpy>=1.26
