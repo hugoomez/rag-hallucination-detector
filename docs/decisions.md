@@ -559,6 +559,9 @@ pre-recorded hallucinated examples from the RAGTruth test set -- valid as a
 supplementary backup, but doesn't demonstrate the LIVE pipeline catching a
 real-time hallucination, which is Phase 5's specific goal.
 
-**Status:** Planned -- not yet implemented. Base pipeline (retrieve -> generate
--> detect) is committed separately; the no-context ablation mode itself is
-pending.
+**Status:** Implemented as `RAGPipeline.answer(question, no_context=True)` in
+src/rag/pipeline.py: the retriever still runs for real (the detector checks
+against genuine context), but `generate()` is called with the separate
+NO_CONTEXT_PROMPT template instead of RAG_PROMPT, so the model never sees
+that context. The returned dict carries `"ablation": true` when used.
+Covered by hermetic tests in tests/test_pipeline.py.
