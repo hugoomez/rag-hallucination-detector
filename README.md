@@ -231,3 +231,49 @@ nothing wrong:
 This pair is the model's temperament in miniature: confident, list-padding fabrication
 gets caught; smooth, plausible-sounding embellishment of real facts slips through.
 
+## RAG Pipeline (Phase 5)
+
+`src/rag/pipeline.py`'s `RAGPipeline` wires the detector into a live, working RAG system
+over a small five-mathematician Wikipedia corpus (Gauss, Euler, Riemann, Hilbert, von
+Neumann):
+
+```
+question -> Retriever (FAISS + MiniLM embeddings, src/rag/retriever.py)
+         -> Groq (openai/gpt-oss-20b) generates an answer from the retrieved context
+         -> Track B detector (src/models/predict.py) checks the answer against that
+            same context
+         -> verdict (color + score + flagged spans)
+```
+
+**Grounded, in-corpus example:**
+
+> **Q:** What did Gauss contribute to number theory?
+> **A:** Gauss made numerous contributions to number theory, including the development
+> of the composition law for binary quadratic forms, the law of quadratic reciprocity,
+> the introduction of the triple-bar symbol (≡) for congruence, the study of primitive
+> roots modulo n, the enumeration of representations of integers as sums of three
+> squares, and early results on class numbers. He also proved the triangular case of the
+> Fermat polygonal number theorem for n = 3 and provided the first proof of the
+> constructibility of a regular heptadecagon.
+> **Verdict:** 🟢 score=0.0115
+
+**No-context ablation example (the live hallucination-detection demo):** live testing
+across ~12 adversarial bait questions found that gpt-oss-20b, under RAG_PROMPT's
+grounding contract, never naturally hallucinates — it either answers correctly from
+genuine context or issues the sanctioned refusal. That's a good sign for the pipeline,
+but it leaves no natural case to demonstrate the detector catching a real hallucination.
+[ADR-016](docs/decisions.md#adr-016-no-context-ablation-mode-for-rag-demo-hallucination-demonstration)
+adds a deliberate, clearly-labeled ablation mode (`RAGPipeline.answer(question,
+no_context=True)`): the retriever still runs for real, so the detector checks against
+genuine retrieved context, but the generator never sees that context and must answer
+from parametric knowledge alone — demonstrating the detector's live capability under
+controlled conditions rather than a scripted example:
+
+> **Q:** On what exact date did John von Neumann marry his second wife, Klara Dan?
+> *(ablation mode: model did NOT see the retrieved context above)*
+> **A:** John von Neumann married his second wife, Klara Dan, on **18 February 1926**.
+> **Verdict:** 🔴 score=0.9698
+>
+> The corpus's actual answer is **November 17, 1938** — the model fabricated a wrong
+> date wholesale (and one that predates his first marriage), and the detector caught it.
+
