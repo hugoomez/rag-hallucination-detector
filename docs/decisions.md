@@ -529,3 +529,66 @@ PR curves).
 
 **Status:** Implemented in scripts/collect_predictions.py (baseline mode); verified by
 reproducing results/baseline_nli_metrics.json test metrics from the unified table.
+
+## ADR-016: No-context ablation mode for RAG demo hallucination demonstration
+
+**Context:** Phase 5's Step 5A.5 requires demonstrating the detector catching
+an induced hallucination in the live RAG pipeline. Live testing of the
+grounded prompt (RAG_PROMPT, requiring the model to answer only from context
+or explicitly refuse) across ~12 adversarial bait questions with
+openai/gpt-oss-20b and qwen produced ZERO natural hallucinations -- the model
+either answered correctly from genuinely retrieved context, or used the
+sanctioned refusal. This is evidence the prompt engineering succeeded, not a
+pipeline failure -- but it leaves no natural demonstration case.
+
+**Decision:** Add an explicit, clearly-labeled ablation mode to RAGPipeline:
+retrieve the REAL context via the retriever (so the detector has genuine
+ground truth to check the answer against), but generate the answer WITHOUT
+showing the model that context, forcing it to answer from parametric
+knowledge alone. This creates an honest, real mismatch for the detector to
+catch -- the same principle used in hallucination red-teaming (deliberately
+removing grounding to test a safety mechanism), not a fabricated or
+cherry-picked example. The pipeline's output must clearly label when this
+mode was used (e.g. an "ablation": true field), so it's never confused with
+normal grounded operation.
+
+**Alternatives considered:** Weakening the RAG_PROMPT's grounding instruction
+-- rejected, since it would undermine the very mechanism that makes normal
+pipeline operation trustworthy, for the sake of an easier demo. Canned/
+pre-recorded hallucinated examples from the RAGTruth test set -- valid as a
+supplementary backup, but doesn't demonstrate the LIVE pipeline catching a
+real-time hallucination, which is Phase 5's specific goal.
+
+**Status:** Planned -- not yet implemented. Base pipeline (retrieve -> generate
+-> detect) is committed separately; the no-context ablation mode itself is
+pending.
+
+## ADR-017: Threshold tuning failed to generalize; simple ensemble gave a real, modest win
+
+**Context:** Following the research report's recommendations #1 (threshold
+tuning) and #4 (simple ensemble), both were tuned strictly on val and applied
+to test exactly once, per this project's established discipline.
+
+**Findings:**
+- Threshold tuning did NOT generalize. Global threshold tuned on val (0.45,
+  val-optimal) scored F1=0.7609 on test, slightly WORSE than the untuned
+  default (0.5, F1=0.7619). Per-task thresholds performed worse still
+  (F1=0.7462), driven by Summary overfitting (best val F1 only 0.60 on a
+  small ~500-row subset). Smaller, noisier subsets amplify the risk of
+  fitting val-specific noise rather than a transferable pattern.
+- The 3-system ensemble (baseline_nli, approach_1_modernbert,
+  track_b_modernbert; track_a_deberta excluded due to val misalignment) DID
+  generalize: val F1 0.7997 -> test F1 0.7701, beating Track B alone (0.7619)
+  by +0.82 points, mainly via improved recall on Summary and QA -- directly
+  addressing Phase 4's diagnosed weak spots.
+
+**Decision:** Adopt the 3-system ensemble's exact weights/threshold as
+documented in results/threshold_ensemble_tuning.json as an available
+"best measured" configuration, reported alongside Track B alone in the
+README comparison table. Do NOT adopt tuned thresholds (global or per-task)
+as the new operating point for Track B -- the untuned 0.5 default remains
+the reported operating point for that model specifically.
+
+**Status:** Complete. Whether the ensemble becomes the model that powers the
+live RAG demo (Phase 5/6) is a separate decision (three models running per
+prediction vs. one -- complexity/latency trade-off), tracked separately.
