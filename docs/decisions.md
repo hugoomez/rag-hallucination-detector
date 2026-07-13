@@ -529,3 +529,36 @@ PR curves).
 
 **Status:** Implemented in scripts/collect_predictions.py (baseline mode); verified by
 reproducing results/baseline_nli_metrics.json test metrics from the unified table.
+
+## ADR-016: No-context ablation mode for RAG demo hallucination demonstration
+
+**Context:** Phase 5's Step 5A.5 requires demonstrating the detector catching
+an induced hallucination in the live RAG pipeline. Live testing of the
+grounded prompt (RAG_PROMPT, requiring the model to answer only from context
+or explicitly refuse) across ~12 adversarial bait questions with
+openai/gpt-oss-20b and qwen produced ZERO natural hallucinations -- the model
+either answered correctly from genuinely retrieved context, or used the
+sanctioned refusal. This is evidence the prompt engineering succeeded, not a
+pipeline failure -- but it leaves no natural demonstration case.
+
+**Decision:** Add an explicit, clearly-labeled ablation mode to RAGPipeline:
+retrieve the REAL context via the retriever (so the detector has genuine
+ground truth to check the answer against), but generate the answer WITHOUT
+showing the model that context, forcing it to answer from parametric
+knowledge alone. This creates an honest, real mismatch for the detector to
+catch -- the same principle used in hallucination red-teaming (deliberately
+removing grounding to test a safety mechanism), not a fabricated or
+cherry-picked example. The pipeline's output must clearly label when this
+mode was used (e.g. an "ablation": true field), so it's never confused with
+normal grounded operation.
+
+**Alternatives considered:** Weakening the RAG_PROMPT's grounding instruction
+-- rejected, since it would undermine the very mechanism that makes normal
+pipeline operation trustworthy, for the sake of an easier demo. Canned/
+pre-recorded hallucinated examples from the RAGTruth test set -- valid as a
+supplementary backup, but doesn't demonstrate the LIVE pipeline catching a
+real-time hallucination, which is Phase 5's specific goal.
+
+**Status:** Planned -- not yet implemented. Base pipeline (retrieve -> generate
+-> detect) is committed separately; the no-context ablation mode itself is
+pending.
