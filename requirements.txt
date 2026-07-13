@@ -13,10 +13,14 @@ sentence-transformers>=3.0
 faiss-cpu>=1.8
 groq>=1.0  # generator LLM client for the Phase 5 pipeline; SDK is stable post-1.0
 
-# API (Phase 6)
+# API + demo (Phase 6)
 fastapi>=0.110
 uvicorn[standard]>=0.29
 pydantic>=2.0  # already pulled by fastapi; pinned since we author v2 models against it
+gradio>=5,<6  # Step 6.2 demo UI. Floor 5: gradio 4.x uses the old starlette
+              # TemplateResponse(name, ...) signature and 500s on this repo's modern
+              # starlette. Cap <6: gradio 6.x forces huggingface-hub>=1.0, which conflicts
+              # with transformers' huggingface-hub<1.0 pin.
 
 # Datos y análisis
 pandas>=2.0
