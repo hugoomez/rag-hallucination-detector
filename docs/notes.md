@@ -170,3 +170,13 @@ example's discrete prediction differs). Consistent with expected GPU inference
 nondeterminism (batch composition / kernel selection), not a data or pipeline
 bug. Considered acceptable noise; not investigated further.
 
+## Phase 5 — observed false positive on paraphrase (Riemann sibling count)
+
+During ablation-mode demo testing, Track B flagged a factually CORRECT
+grounded answer ("second of six children, five siblings") as unsupported
+(score 0.99), likely due to sensitivity to paraphrasing rather than genuine
+factual disagreement. Noted as a known limitation, not investigated further --
+consistent with Phase 4's finding that the detector is "overconfident" rather
+than paranoid overall, but shows this can occasionally cut the other way on
+close paraphrases.
+
