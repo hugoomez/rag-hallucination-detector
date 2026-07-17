@@ -1,0 +1,550 @@
+/* RAG Hallucination Detector — "the examination table" (ADR-019)
+ *
+ * Two rules carry the design; everything else is in service of them.
+ *
+ * 1. SIGNAL IS THE ONLY SATURATION. The page is a near-monochrome cool grey. The three
+ *    traffic-light colors are the only saturated things on it, so the page stays silent
+ *    until the detector speaks. That is what integrates the traffic light into the design
+ *    rather than bolting an emoji onto a card.
+ *
+ * 2. THE TYPEFACE TELLS YOU WHAT KIND OF TEXT YOU ARE READING. Three IBM Plex cuts, each
+ *    reserved for exactly one meaning, so the rule is legible without a legend:
+ *      Sans Condensed = the interface naming things — labels, eyebrows, controls (.eyebrow, .btn)
+ *      Serif          = anything meant to be READ at length: the model's text and the
+ *                       page's own prose (.prose, and the body default)
+ *      Mono           = machine output — scores, offsets, thresholds, filenames (.mono)
+ *    Do not use a face outside its role; the moment mono shows prose, the system is noise.
+ *    Note the split is read-vs-label-vs-measure, NOT authorship: the page's own sentences
+ *    are set in the same serif as the model's, because both are there to be read. What
+ *    sets the examined claim apart is its raised panel and its marks, not its face.
+ *
+ * Fonts are self-hosted (frontend/fonts, OFL) so the design renders identically offline
+ * and inside Docker — a CDN link would silently degrade and undercut ADR-018's promise of
+ * an identical local experience.
+ */
+
+/* --- Fonts ------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: "Plex Condensed";
+  src: url("fonts/IBMPlexSansCondensed-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Plex Serif";
+  src: url("fonts/IBMPlexSerif-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Plex Mono";
+  src: url("fonts/IBMPlexMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Plex Mono";
+  src: url("fonts/IBMPlexMono-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+
+/* --- Tokens ------------------------------------------------------------------------ */
+
+:root {
+  --paper: #e9ebee;
+  --paper-raised: #f5f6f8;
+  --ink: #141821;
+  --ink-soft: #5a6473;
+  --rule: #c6cbd3;
+
+  /* The only saturated hues on the page. Deep and inky — a printed instrument panel,
+   * not a notification badge. All three clear AA on --paper-raised. */
+  --signal-green: #0a6b42;
+  --signal-amber: #8f5510;
+  --signal-red: #b32517;
+
+  --face-chrome: "Plex Condensed", "IBM Plex Sans Condensed", system-ui, sans-serif;
+  --face-prose: "Plex Serif", "IBM Plex Serif", Georgia, serif;
+  --face-mono: "Plex Mono", "IBM Plex Mono", ui-monospace, monospace;
+
+  --gap: 1.5rem;
+  --measure: 74rem;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* --- Base -------------------------------------------------------------------------- */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0 auto;
+  padding: 0 var(--gap) 4rem;
+  max-width: var(--measure);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--face-prose);
+  font-size: 17px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* The three type roles. */
+.eyebrow {
+  display: block;
+  font-family: var(--face-chrome);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.prose { font-family: var(--face-prose); }
+.mono {
+  font-family: var(--face-mono);
+  font-size: 12px;
+  font-variant-ligatures: none;
+}
+
+.footnote {
+  margin: 0.5rem 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  max-width: 62ch;
+}
+
+/* --- Masthead ---------------------------------------------------------------------- */
+
+.masthead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1.75rem 0 0.75rem;
+  border-bottom: 1px solid var(--ink);
+}
+
+.masthead__title {
+  margin: 0;
+  font-family: var(--face-chrome);
+  font-size: clamp(1.25rem, 3.2vw, 1.75rem);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.masthead__readout {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.model-id {
+  font-family: var(--face-mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-family: var(--face-mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.status__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-soft);
+}
+.status[data-state="ok"] .status__dot { background: var(--signal-green); }
+.status[data-state="down"] .status__dot { background: var(--signal-red); }
+
+.standfirst {
+  margin: 1rem 0 1.75rem;
+  max-width: 58ch;
+  color: var(--ink-soft);
+  font-size: 15px;
+}
+
+/* --- Mode switch ------------------------------------------------------------------- */
+
+.modes {
+  display: flex;
+  gap: 1.75rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.mode {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0.65rem 0;
+  margin-bottom: -1px;
+  font-family: var(--face-chrome);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.mode:hover { color: var(--ink); }
+.mode[aria-selected="true"] {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+.panel { padding-top: 1.75rem; }
+
+/* --- The bench: evidence | claim --------------------------------------------------- */
+
+.bench {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap);
+}
+
+.bench__col { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.prose--input {
+  width: 100%;
+  padding: 0.85rem 0.95rem;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.6;
+  resize: vertical;
+}
+.prose--input::placeholder { color: var(--ink-soft); opacity: 0.75; }
+.prose--input:focus-visible { border-color: var(--ink); }
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 1rem;
+}
+
+.btn {
+  appearance: none;
+  cursor: pointer;
+  font-family: var(--face-chrome);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.6rem 1.4rem;
+  border: 1px solid var(--ink);
+  background: none;
+  color: var(--ink);
+}
+.btn--primary { background: var(--ink); color: var(--paper-raised); }
+.btn--primary:hover:not(:disabled) { background: #000; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* --- Examples + presets ------------------------------------------------------------ */
+
+.examples { padding-top: 2.25rem; }
+.examples__label, .presets__label { margin-bottom: 0.6rem; }
+.presets__hint { text-transform: none; letter-spacing: 0; font-weight: 400; }
+
+.examples__row, .presets__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chip {
+  appearance: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.7rem;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  color: var(--ink);
+  font-family: var(--face-mono);
+  font-size: 12px;
+}
+.chip:hover:not(:disabled) { border-color: var(--ink); }
+.chip:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* --- Ask row ----------------------------------------------------------------------- */
+
+.ask {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--gap);
+  flex-wrap: wrap;
+}
+.ask__field { flex: 1 1 22rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.ask__generator { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.switch { display: flex; border: 1px solid var(--rule); background: var(--paper-raised); }
+.switch__opt {
+  appearance: none;
+  cursor: pointer;
+  border: 0;
+  background: none;
+  padding: 0.62rem 0.9rem;
+  font-family: var(--face-chrome);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.switch__opt[aria-checked="true"] { background: var(--ink); color: var(--paper-raised); }
+
+.presets { padding-top: 1.75rem; }
+
+/* --- Retrieved evidence ------------------------------------------------------------ */
+
+.evidence { padding-top: 2.25rem; }
+.evidence__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.6rem;
+}
+.evidence__flag { color: var(--signal-amber); }
+
+.evidence__body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1px;
+  background: var(--rule);
+  border: 1px solid var(--rule);
+}
+
+.chunk {
+  background: var(--paper-raised);
+  padding: 0.85rem 0.95rem;
+}
+.chunk__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.4rem;
+  color: var(--ink-soft);
+}
+.chunk__text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* Blinded: the evidence was retrieved but withheld from the generator (ADR-016). The
+ * hatch says "present but not seen" without a paragraph of explanation. */
+.evidence--blinded .chunk {
+  background-image: repeating-linear-gradient(
+    45deg, transparent 0 6px, rgba(20, 24, 33, 0.07) 6px 7px
+  );
+}
+.evidence--blinded .chunk__text { color: var(--ink-soft); }
+
+/* --- Readout ----------------------------------------------------------------------- */
+
+.readout {
+  margin-top: 2.75rem;
+  border-top: 1px solid var(--ink);
+}
+
+.assay { padding: 1.75rem 0 0; }
+.assay__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.assay__verdict {
+  font-family: var(--face-chrome);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.assay__note { margin-top: 1.6rem; }
+
+/* --- The gauge: the signature ------------------------------------------------------ *
+ * The traffic light is really a threshold on a scalar, so it is drawn as one. Zones sit
+ * at their true positions, which makes the amber band exactly 5% of the scale wide — you
+ * see that "borderline" is a hair's breadth rather than being told. The zones are tints;
+ * the needle is the only full-saturation mark, so the instrument stays quiet.
+ */
+
+.gauge { padding-top: 1.5rem; }
+
+.gauge__track {
+  position: relative;
+  height: 10px;
+  border: 1px solid var(--rule);
+}
+
+.gauge__zones {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--signal-green) 18%, transparent) 0 45%,
+    color-mix(in srgb, var(--signal-amber) 34%, transparent) 45% 50%,
+    color-mix(in srgb, var(--signal-red) 18%, transparent) 50% 100%
+  );
+}
+
+.gauge__tick {
+  position: absolute;
+  top: -5px;
+  bottom: -5px;
+  width: 1px;
+  background: var(--ink-soft);
+}
+
+.gauge__needle {
+  position: absolute;
+  top: -7px;
+  bottom: -7px;
+  left: 0;
+  width: 2px;
+  background: var(--verdict, var(--ink));
+}
+/* The needle travels from 0 to the score — an instrument settling. */
+@media (prefers-reduced-motion: no-preference) {
+  .gauge__needle { transition: left 450ms var(--ease); }
+}
+
+.gauge__value {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  font-weight: 500;
+  color: var(--verdict, var(--ink));
+  white-space: nowrap;
+}
+
+.gauge__axis {
+  position: relative;
+  height: 2.6rem;
+  margin-top: 0.3rem;
+  color: var(--ink-soft);
+}
+.gauge__end { position: absolute; top: 1.2rem; }
+.gauge__end--right { transform: translateX(-100%); }
+
+/* One label for both thresholds: at 5% apart, "0.45" and "0.50" would collide at any
+ * sane width — so the band is labelled as the single range it actually is. */
+.gauge__band-label {
+  position: absolute;
+  left: 47.5%;
+  top: 1.2rem;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  color: var(--signal-amber);
+}
+
+/* --- Marked claim ------------------------------------------------------------------ */
+
+.marked { padding: 2rem 0 0; }
+.marked__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.7rem;
+}
+.marked__count { color: var(--ink-soft); }
+
+.marked__body {
+  margin: 0;
+  padding: 1.1rem 1.2rem;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  white-space: pre-wrap;   /* offsets index the raw string; never reflow it */
+  overflow-wrap: break-word;
+}
+
+/* A mark is a red pen stroke: a faint wash plus a solid rule under the exact characters
+ * the model flagged. Every mark looks the same because the model emits no per-span label
+ * or score — inventing a severity ramp here would be a lie. */
+mark.mark {
+  color: inherit;
+  background-color: rgba(179, 37, 23, 0.1);
+  background-image: linear-gradient(var(--signal-red), var(--signal-red));
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 100% 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  mark.mark {
+    animation: mark-in 260ms var(--ease) both;
+    animation-delay: calc(var(--i, 0) * 30ms);
+  }
+  @keyframes mark-in {
+    from { background-size: 0 2px; background-color: transparent; }
+    to   { background-size: 100% 2px; background-color: rgba(179, 37, 23, 0.1); }
+  }
+}
+
+/* --- Notices ----------------------------------------------------------------------- */
+
+.notice {
+  margin-top: 2rem;
+  padding: 0.9rem 1.1rem;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--ink-soft);
+  font-size: 15px;
+}
+.notice__title {
+  font-family: var(--face-chrome);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 0.2rem;
+}
+.notice[data-tone="error"] { border-left-color: var(--signal-red); }
+.notice[data-tone="error"] .notice__title { color: var(--signal-red); }
+.notice[data-tone="wait"] { border-left-color: var(--signal-amber); }
+.notice[data-tone="wait"] .notice__title { color: var(--signal-amber); }
+
+/* --- Colophon ---------------------------------------------------------------------- */
+
+.colophon {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-top: 3.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rule);
+  color: var(--ink-soft);
+}
+.colophon a { color: var(--ink-soft); }
+
+/* --- Narrow ------------------------------------------------------------------------ */
+
+@media (max-width: 46rem) {
+  .bench { grid-template-columns: 1fr; }
+  .ask { align-items: stretch; }
+  .ask__field { flex-basis: 100%; }
+  .masthead { padding-top: 1.25rem; }
+  .model-id { display: none; }  /* the id is reference, not news — first thing to go */
+}

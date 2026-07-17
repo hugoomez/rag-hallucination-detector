@@ -73,7 +73,17 @@ Answer:"""
 
 
 class GenerationError(Exception):
-    """Groq call failed after the SDK's built-in retries; message is user-facing and key-free."""
+    """Groq call failed after the SDK's built-in retries; message is user-facing and key-free.
+
+    `kind` classifies the failure so callers can react without matching on message text.
+    The API maps it to a status code (rate_limit -> 429, everything else -> 502) and hands
+    it to the frontend, which styles the message accordingly. The message itself stays the
+    single source of user-facing wording -- it is safe to surface verbatim.
+    """
+
+    def __init__(self, message: str, kind: str = "api_error") -> None:
+        super().__init__(message)
+        self.kind = kind
 
 
 def create_groq_client() -> Groq:
@@ -162,14 +172,18 @@ class RAGPipeline:
             )
         except RateLimitError as exc:
             raise GenerationError(
-                "Groq rate limit hit (free tier is ~30 requests/min); wait a minute and retry."
+                "Groq rate limit hit (free tier is ~30 requests/min); wait a minute and retry.",
+                kind="rate_limit",
             ) from exc
         except APIConnectionError as exc:
-            raise GenerationError("Could not reach the Groq API -- check your network connection.") from exc
+            raise GenerationError(
+                "Could not reach the Groq API -- check your network connection.",
+                kind="connection",
+            ) from exc
         except GroqError as exc:
             # Auth failures, 4xx/5xx, decommissioned model, etc. SDK messages carry
             # status/model info but never the API key.
-            raise GenerationError(f"Groq API call failed: {exc}") from exc
+            raise GenerationError(f"Groq API call failed: {exc}", kind="api_error") from exc
 
         content = response.choices[0].message.content
         if content is None or not content.strip():
@@ -177,7 +191,8 @@ class RAGPipeline:
             # budget before any answer was emitted (observed live with qwen at a 512 cap).
             reason = getattr(response.choices[0], "finish_reason", "unknown")
             raise GenerationError(
-                f"Groq returned an empty completion for model {self.model_name} (finish_reason={reason})."
+                f"Groq returned an empty completion for model {self.model_name} (finish_reason={reason}).",
+                kind="empty_completion",
             )
         return content.strip()
 

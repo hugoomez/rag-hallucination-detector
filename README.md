@@ -279,12 +279,15 @@ controlled conditions rather than a scripted example:
 
 ## Run the demo locally with Docker (Phase 6)
 
-Both Phase 6 services — the FastAPI detector wrapper (`api/main.py`) and the
-Gradio demo (`app/app.py`) — are packaged for one-command local reproduction.
-Public hosting was dropped per
+The demo is packaged for one-command local reproduction. Public hosting was dropped per
 [ADR-018](docs/decisions.md#adr-018-skip-public-hf-spaces-deployment-in-favor-of-local-docker-reproduction)
 (HF now PRO-gates personal Gradio Spaces); Docker gives an identical experience
 locally with no account or cost.
+
+The **custom frontend at http://localhost:8000 is the primary demo** — FastAPI serves it
+from the same process as the API, so there is no separate service and no CORS
+([ADR-019](docs/decisions.md#adr-019-replace-the-gradio-demo-with-a-custom-same-origin-frontend)).
+The original Gradio app is kept as a fallback on :7860.
 
 **Prerequisites:** Docker + Docker Compose.
 
@@ -304,11 +307,33 @@ Then open:
 
 | Service | URL | What it is |
 |---------|-----|------------|
-| **Gradio demo** | http://localhost:7860 | Paste-your-own + live RAG tabs |
-| **API docs** | http://localhost:8000/docs | Interactive Swagger UI for `POST /detect` |
-| **API health** | http://localhost:8000/health | `{"status","model_loaded"}` |
+| **Demo** | http://localhost:8000 | The custom frontend: paste-your-own + live RAG |
+| **API docs** | http://localhost:8000/docs | Interactive Swagger UI for `/detect`, `/ask`, `/presets` |
+| **API health** | http://localhost:8000/health | `{"status","model_loaded","pipeline_loaded"}` |
+| **Gradio fallback** | http://localhost:7860 | The original Gradio UI, same two modes |
 
-Run just one service with `docker compose up app` or `docker compose up api`.
+Run just one service with `docker compose up api` (demo + API) or `docker compose up app`
+(Gradio only).
+
+### What it looks like
+
+The custom demo, driven end-to-end against the real model (verdicts and scores are the
+model's, not mock data):
+
+**Paste-your-own — a flagged hallucination.** The score gauge draws the verdict as what it
+is, a threshold on one number, with the 0.45–0.50 amber band at true scale; the invented
+sentence is marked on its exact character offsets.
+
+![Paste-your-own, red verdict](results/demo_paste_red.png)
+
+**Live RAG — the no-context ablation.** The generator is blinded to the retrieved evidence
+(hatched, "withheld from the generator"), so it answers from memory and hallucinates a
+date; the detector still judges it against the real retrieved context and catches it.
+
+![Live RAG, blinded ablation](results/demo_rag_blinded.png)
+
+A clean, fully-supported claim (no marks, green verdict) is in
+[`results/demo_paste_green.png`](results/demo_paste_green.png).
 
 **Notes:**
 - **Models are not baked into the image.** On first start they download from the
