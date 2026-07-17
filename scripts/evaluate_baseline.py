@@ -152,8 +152,7 @@ def main() -> None:
     val_rows, val_parquet_n = reconstruct_split(merged, VAL_PARQUET)
     test_rows, test_parquet_n = reconstruct_split(merged, TEST_PARQUET)
     print(
-        f"val: {len(val_rows)} rows (parquet {val_parquet_n}) | "
-        f"test: {len(test_rows)} rows (parquet {test_parquet_n})",
+        f"val: {len(val_rows)} rows (parquet {val_parquet_n}) | test: {len(test_rows)} rows (parquet {test_parquet_n})",
         flush=True,
     )
 

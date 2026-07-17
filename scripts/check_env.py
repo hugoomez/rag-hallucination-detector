@@ -1,4 +1,6 @@
-import torch, transformers, datasets
+import torch
+import transformers
+
 print("torch:", torch.__version__)
 print("transformers:", transformers.__version__)
 print("CUDA disponible:", torch.cuda.is_available())

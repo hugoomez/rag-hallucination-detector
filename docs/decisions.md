@@ -590,8 +590,37 @@ documented in results/threshold_ensemble_tuning.json as an available
 "best measured" configuration, reported alongside Track B alone in the
 README comparison table. Do NOT adopt tuned thresholds (global or per-task)
 as the new operating point for Track B -- the untuned 0.5 default remains
-the reported operating point for that model specifically. The live RAG
-demo (Phase 5) uses Track B alone, not the ensemble, favoring simplicity
-and lower latency over the modest accuracy gain.
+the reported operating point for that model specifically.
 
-**Status:** Complete.
+**Status:** Complete. Whether the ensemble becomes the model that powers the
+live RAG demo (Phase 5/6) is a separate decision (three models running per
+prediction vs. one -- complexity/latency trade-off), tracked separately.
+
+## ADR-018: Skip public HF Spaces deployment in favor of local Docker reproduction
+
+**Context:** Phase 6 originally planned a public Hugging Face Space (Gradio
+SDK, CPU Basic hardware) per the phase document. During deployment, HF
+confirmed (via a 402 Payment Required response and their own official docs)
+that hosting a personal Gradio Space -- on CPU Basic OR ZeroGPU -- now
+requires a PRO subscription ($9/month, recurring, confirmed not a one-time
+fee). This is a recent platform change (corroborated by a matching HF forum
+thread from the same week) not anticipated by the original phase document.
+
+**Decision:** Do not pay for a recurring subscription to host a demo with
+uncertain traffic value. Instead: package both api/main.py (FastAPI) and
+app/app.py (Gradio) with Docker/docker-compose for one-command local
+reproduction, and document clear setup instructions in the README, alongside
+captured screenshots/GIF evidence of the working system (captured while the
+implementation is fresh, rather than requiring a live demo to prove
+functionality).
+
+**Alternatives considered:**
+- HF Pro subscription ($9/month recurring) -- rejected as an ongoing cost
+  disproportionate to expected demo traffic for a portfolio project.
+- Self-hosting on Oracle Cloud's Always Free tier (VM, systemd, security
+  groups) -- rejected as it trades a small recurring cost for a larger
+  ongoing maintenance/security burden (patching, uptime, SSH key
+  management), a poor trade for a project meant to showcase ML engineering,
+  not infrastructure operations.
+
+**Status:** Implemented via Docker packaging (see below).

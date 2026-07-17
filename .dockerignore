@@ -1,0 +1,25 @@
+# Keep the build context small and prevent secrets / large artifacts from
+# entering the image. Only src/, api/, app/, data/corpus/ and requirements are
+# actually COPYed by the Dockerfile.
+.git/
+.github/
+.venv/
+scratchpad/
+notebooks/
+results/
+models/
+tests/
+docs/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.parquet
+*.ipynb
+.env
+.env.*
+!.env.example
+
+# data/ is large; the Dockerfile only needs data/corpus/. Ignore the rest.
+data/*
+!data/corpus/
+!data/corpus/**
