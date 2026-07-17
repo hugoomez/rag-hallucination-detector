@@ -97,7 +97,7 @@ class NLIHallucinationDetector:
         missing = [label for label in _REQUIRED_LABELS if label not in label2idx]
         if missing:
             raise ValueError(
-                f"Model config id2label is missing required NLI labels {missing}; " f"got {model.config.id2label}"
+                f"Model config id2label is missing required NLI labels {missing}; got {model.config.id2label}"
             )
 
         self.model = model.to(device).eval()

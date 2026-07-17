@@ -46,7 +46,7 @@ def main() -> None:
     sample = build_sample(merged)
 
     detector = NLIHallucinationDetector.from_pretrained()
-    print(f"device: {detector.device} | sample: {len(sample)} rows " f"({N_PER_TASK} per task_type)", flush=True)
+    print(f"device: {detector.device} | sample: {len(sample)} rows ({N_PER_TASK} per task_type)", flush=True)
 
     times_by_task: dict[str, list[float]] = {task_type: [] for task_type in TASK_TYPES}
 
@@ -58,7 +58,7 @@ def main() -> None:
 
         times_by_task[row.task_type].append(elapsed)
         print(
-            f"[{i:2d}/{len(sample)}] {row.task_type:8s} " f"chunks={len(context_chunks):3d} elapsed={elapsed:6.2f}s",
+            f"[{i:2d}/{len(sample)}] {row.task_type:8s} chunks={len(context_chunks):3d} elapsed={elapsed:6.2f}s",
             flush=True,
         )
 
