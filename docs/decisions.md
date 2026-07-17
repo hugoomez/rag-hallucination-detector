@@ -624,3 +624,81 @@ functionality).
   not infrastructure operations.
 
 **Status:** Implemented via Docker packaging (see below).
+
+
+## ADR-019: Replace the Gradio demo with a custom same-origin frontend
+
+**Context:** The Phase 6 demo (app/app.py) is a Gradio app. It works, and its
+callbacks and helpers are tested, but every Gradio app looks like every other
+Gradio app. As the primary artifact a reader sees first, that is a real cost
+for a portfolio project: the visual layer says nothing about what the system
+does or how much care went into it. Two things blocked a custom UI. First,
+api/main.py only wrapped Detector.predict() via POST /detect -- the retriever,
+RAGPipeline, Groq client and the demo_cache.json presets existed only inside
+the Gradio process, so a browser had no way to reach live RAG. Second, nothing
+in the repo served static files.
+
+**Decision:** Build a standalone HTML/CSS/JS frontend under frontend/ and serve
+it from the FastAPI process itself, mounted at "/" and registered after every
+API route. Extend the API with POST /ask (live RAG, with the ADR-016 ablation
+exposed as a real request field), GET /presets (the checked-in cache, needing
+neither model nor key), and pipeline_loaded on /health. Keep the Gradio app as
+a working fallback on :7860.
+
+**Rationale:** Serving the frontend from the API process makes the browser's
+fetch("/detect") same-origin by construction, so CORSMiddleware is never added
+at all. A separate origin would have required a compose service, an
+allow_origins list, and a build- or run-time mechanism to tell the JS where the
+API lives -- three pieces of configuration that can only ever be wrong, bought
+for no benefit, since there is no CDN, no separate deploy target and no other
+API consumer. It also costs almost nothing structurally: ADR-018 already builds
+ONE image that compose runs two ways, and the `app` service never talked to
+`api` over HTTP anyway (it loads the Detector in-process), so there was no
+cross-origin call to preserve. docker-compose.yml is unchanged; the Dockerfile
+gains one COPY line.
+
+Route ordering is the one real hazard, since the mount is a catch-all at "/".
+Starlette matches routes in registration order, so the mount must stay last in
+api/main.py. That is verified rather than assumed: tests/test_api.py asserts
+that /health, /presets, /docs and /openapi.json still resolve while "/" serves
+index.html.
+
+Two smaller decisions fell out of this. GenerationError gained a `kind`
+attribute (rate_limit / connection / api_error / empty_completion) so /ask can
+map failures to status codes (429 for a rate limit, 502 otherwise) and the
+frontend can style them, without matching on message text; the messages
+themselves are unchanged. And the three preset questions -- previously
+duplicated across app/app.py, app/precompute_cache.py and pipeline.main() in
+three drifting shapes -- moved to app/presets.py, which the API imports instead
+of app/app.py (importing the latter would drag gradio into the API process).
+
+**Design:** The frontend takes its identity from the subject rather than from a
+template. The page is a near-monochrome cool grey, and the three traffic-light
+colors are the only saturated things on it, so it stays silent until the
+detector speaks -- which is what integrates the traffic light into the design
+instead of bolting an emoji onto a card. Three IBM Plex cuts are each reserved
+for one meaning: condensed sans is the interface talking, serif is text the
+model read or wrote, mono is numbers the model produced. The signature element
+is the assay gauge, which draws the verdict as what it actually is -- a
+threshold on one scalar -- with the 0.45-0.50 amber band at true scale, i.e. 5%
+of the width. That makes "borderline is a hair's breadth" something the reader
+sees rather than something we claim. Fonts are self-hosted woff2 (OFL, ~69 KB
+total) so the design renders identically offline, which a CDN link would not,
+and which ADR-018's "identical experience locally" claim depends on.
+
+**Alternatives considered:**
+- A separate static origin (nginx or a third compose service) with
+  CORSMiddleware -- rejected above: pure configuration cost, no benefit here.
+- Deleting the Gradio app -- rejected for now. It is working, tested code and a
+  genuine fallback; keeping it costs a compose service that was already there.
+- A JS framework and build step -- rejected. The only real frontend logic is
+  wrapping character offsets in <mark> tags, which is a dozen lines of string
+  slicing. A toolchain would add a build to a repo that currently has none.
+
+**Status:** Implemented in frontend/, api/main.py (/ask, /presets,
+pipeline_loaded, static mount), app/presets.py, and src/rag/pipeline.py
+(GenerationError.kind). Frontend JS interaction is not unit-tested (no JS
+toolchain in this repo); it is scoped the same way app/app.py's Gradio
+callbacks were -- logic worth testing is tested in Python, and the integration
+risk that matters (mount ordering, endpoint contracts) is covered in
+tests/test_api.py.

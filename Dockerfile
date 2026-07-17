@@ -24,6 +24,9 @@ COPY src/ ./src/
 COPY api/ ./api/
 COPY app/ ./app/
 COPY data/corpus/ ./data/corpus/
+# The custom demo, served by the API process itself at "/" (ADR-019). Fonts are vendored
+# in here, so the design renders identically with no network access.
+COPY frontend/ ./frontend/
 
 EXPOSE 8000 7860
 

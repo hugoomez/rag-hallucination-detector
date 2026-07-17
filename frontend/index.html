@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAG Hallucination Detector</title>
+<link rel="preload" href="fonts/IBMPlexSansCondensed-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/IBMPlexSerif-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/IBMPlexMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="masthead">
+  <h1 class="masthead__title">RAG Hallucination&nbsp;Detector</h1>
+  <div class="masthead__readout">
+    <span class="status" id="status" data-state="loading">
+      <span class="status__dot" aria-hidden="true"></span>
+      <span class="status__text">checking</span>
+    </span>
+    <code class="model-id">hugoomezz/modernbert-ragtruth-token-level-binary</code>
+  </div>
+</header>
+
+<p class="standfirst">
+  A token-level detector that marks the exact spans of a response its evidence does not
+  support. Every number on this page comes from the model.
+</p>
+
+<nav class="modes" role="tablist" aria-label="Detection mode">
+  <button class="mode" role="tab" id="tab-paste" aria-controls="panel-paste" aria-selected="true" data-mode="paste">Paste your own</button>
+  <button class="mode" role="tab" id="tab-rag" aria-controls="panel-rag" aria-selected="false" data-mode="rag">Live RAG</button>
+</nav>
+
+<main>
+
+  <!-- ── Mode 1: you supply the evidence and the claim ─────────────────────── -->
+  <section class="panel" id="panel-paste" role="tabpanel" aria-labelledby="tab-paste">
+    <div class="bench">
+      <div class="bench__col">
+        <label class="eyebrow" for="paste-context">Evidence</label>
+        <textarea id="paste-context" class="prose prose--input" rows="9"
+          placeholder="Paste the source text the answer should be grounded in…"></textarea>
+      </div>
+      <div class="bench__col">
+        <label class="eyebrow" for="paste-response">Claim</label>
+        <textarea id="paste-response" class="prose prose--input" rows="9"
+          placeholder="Paste the answer to check…"></textarea>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn--primary" id="examine">Examine</button>
+    </div>
+
+    <div class="examples">
+      <span class="eyebrow examples__label">Examples</span>
+      <div class="examples__row" id="examples"></div>
+      <p class="footnote" id="example-note"></p>
+    </div>
+  </section>
+
+  <!-- ── Mode 2: the pipeline supplies them ───────────────────────────────── -->
+  <section class="panel" id="panel-rag" role="tabpanel" aria-labelledby="tab-rag" hidden>
+    <div class="ask">
+      <div class="ask__field">
+        <label class="eyebrow" for="question">Question</label>
+        <input id="question" class="prose prose--input" type="text"
+          placeholder="Ask about the corpus: Gauss, Euler, Hilbert, Riemann, von Neumann…">
+      </div>
+      <div class="ask__generator">
+        <span class="eyebrow">Generator</span>
+        <div class="switch" role="radiogroup" aria-label="Generator context">
+          <button class="switch__opt" role="radio" aria-checked="true" data-blinded="false">Sees context</button>
+          <button class="switch__opt" role="radio" aria-checked="false" data-blinded="true">Blinded</button>
+        </div>
+      </div>
+      <button class="btn btn--primary" id="ask">Ask</button>
+    </div>
+
+    <p class="footnote" id="blinded-note" hidden>
+      Blinded runs the ADR-016 ablation: retrieval still happens, but the generator answers
+      from memory alone. The detector still judges it against the real retrieved evidence.
+    </p>
+
+    <div class="presets" id="presets-wrap" hidden>
+      <span class="eyebrow presets__label">Cached questions <span class="presets__hint">— instant, no API call</span></span>
+      <div class="presets__row" id="presets"></div>
+    </div>
+
+    <div class="evidence" id="evidence" hidden>
+      <div class="evidence__head">
+        <span class="eyebrow">Retrieved evidence</span>
+        <span class="mono evidence__flag" id="evidence-flag" hidden>withheld from the generator</span>
+      </div>
+      <div class="evidence__body" id="evidence-body"></div>
+    </div>
+  </section>
+
+  <!-- ── Shared readout: identical for both modes ─────────────────────────── -->
+  <section class="readout" id="readout" hidden aria-live="polite">
+    <div class="assay">
+      <div class="assay__head">
+        <span class="eyebrow">Assay</span>
+        <span class="assay__verdict" id="verdict-label"></span>
+      </div>
+
+      <div class="gauge" id="gauge">
+        <div class="gauge__track">
+          <div class="gauge__zones"></div>
+          <div class="gauge__tick" style="left:45%"></div>
+          <div class="gauge__tick" style="left:50%"></div>
+          <div class="gauge__needle" id="needle"><span class="gauge__value mono" id="score"></span></div>
+        </div>
+        <div class="gauge__axis mono">
+          <span class="gauge__end" style="left:0">0</span>
+          <span class="gauge__band-label" id="band-label">0.45–0.50</span>
+          <span class="gauge__end gauge__end--right" style="left:100%">1.0</span>
+        </div>
+      </div>
+      <p class="footnote assay__note">
+        The verdict is a threshold on one number: max P(hallucinated) over the claim's tokens.
+        The amber band is drawn to scale — borderline is a hair's breadth.
+      </p>
+    </div>
+
+    <div class="marked">
+      <div class="marked__head">
+        <span class="eyebrow">Marked claim</span>
+        <span class="mono marked__count" id="span-count"></span>
+      </div>
+      <p class="prose marked__body" id="marked-body"></p>
+      <p class="footnote marked__note" id="marked-note" hidden></p>
+    </div>
+  </section>
+
+  <div class="notice" id="notice" hidden role="alert"></div>
+
+</main>
+
+<footer class="colophon">
+  <span class="mono">ModernBERT · RAGTruth · Track B</span>
+  <span class="mono">thresholds 0.45 / 0.50</span>
+  <a class="mono" href="/docs">API docs</a>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

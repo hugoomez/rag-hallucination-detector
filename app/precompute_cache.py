@@ -11,9 +11,10 @@ changes:
 
     python app/precompute_cache.py
 
-The three presets mirror src/rag/pipeline.py::main() -- an in-corpus grounded question, an
-out-of-corpus refusal, and the ADR-016 no-context ablation (von Neumann's second-marriage
-date), which is the primary live-hallucination demo and should come back 🔴.
+The three presets come from app/presets.py (shared with app/app.py and the API's /presets
+endpoint) -- an in-corpus grounded question, an out-of-corpus refusal, and the ADR-016
+no-context ablation (von Neumann's second-marriage date), which is the primary
+live-hallucination demo and should come back 🔴.
 """
 
 import json
@@ -24,18 +25,12 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from app.presets import PRESETS  # noqa: E402
 from src.models.predict import Detector  # noqa: E402
 from src.rag.pipeline import RAGPipeline, create_groq_client  # noqa: E402
 from src.rag.retriever import CORPUS_DIR, Retriever  # noqa: E402
 
 CACHE_PATH = Path(__file__).resolve().parent / "demo_cache.json"
-
-# (question, no_context) -- keep in sync with TAB2_PRESETS in app/app.py.
-PRESETS = [
-    ("What did Gauss contribute to number theory?", False),
-    ("Who won the 2022 FIFA World Cup?", False),
-    ("On what exact date did John von Neumann marry his second wife, Klara Dan?", True),
-]
 
 
 def main() -> None:
@@ -46,12 +41,12 @@ def main() -> None:
     pipeline = RAGPipeline(retriever, detector, client)
 
     cache: dict[str, dict] = {}
-    for question, no_context in PRESETS:
-        result = pipeline.answer(question, no_context=no_context)
-        cache[question] = result
+    for preset in PRESETS:
+        result = pipeline.answer(preset.question, no_context=preset.no_context)
+        cache[preset.question] = result
         verdict = result["verdict"]
         tag = " (ablation)" if result.get("ablation") else ""
-        print(f"{verdict['color']} score={verdict['score']:.4f}{tag}  {question}")
+        print(f"{verdict['color']} score={verdict['score']:.4f}{tag}  {preset.question}")
         print(f"    -> {result['answer']}")
 
     CACHE_PATH.write_text(json.dumps(cache, indent=2, ensure_ascii=False), encoding="utf-8")

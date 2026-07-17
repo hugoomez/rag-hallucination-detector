@@ -28,7 +28,6 @@ cold starts would fire live Groq calls (and risk rate limits) exactly when a vis
 A frozen JSON keeps the demo deterministic and working even if Groq is down or no key is set.
 """
 
-import json
 import sys
 from pathlib import Path
 
@@ -41,6 +40,15 @@ if str(_REPO_ROOT) not in sys.path:
 
 import gradio as gr  # noqa: E402
 
+# CACHE_PATH/load_cache/get_cached_result live in app/presets.py so the API can read the
+# cache without importing this module (and with it, gradio). Re-exported here: they are part
+# of this module's tested surface.
+from app.presets import (  # noqa: E402, F401
+    CACHE_PATH,
+    PRESETS,
+    get_cached_result,
+    load_cache,
+)
 from src.models.predict import Detector  # noqa: E402
 from src.rag.pipeline import GenerationError, RAGPipeline, create_groq_client  # noqa: E402
 from src.rag.retriever import CORPUS_DIR, Retriever  # noqa: E402
@@ -49,8 +57,6 @@ from src.rag.retriever import CORPUS_DIR, Retriever  # noqa: E402
 # the same "hallucination" entity, colored red via gr.HighlightedText(color_map=...).
 HALLUCINATION_LABEL = "hallucination"
 COLOR_MAP = {HALLUCINATION_LABEL: "red"}
-
-CACHE_PATH = Path(__file__).resolve().parent / "demo_cache.json"
 
 _VERDICT_LABELS = {"🔴": "Likely hallucination", "🟡": "Borderline", "🟢": "Looks supported"}
 
@@ -101,19 +107,6 @@ def format_contexts(contexts: list[dict], ablation: bool = False) -> str:
         preview = c["text"][:400].strip()
         lines.append(f"**[{c['source']}]** · similarity {c['score']:.3f}\n\n{preview}…")
     return "\n\n".join(lines)
-
-
-def load_cache(path: Path = CACHE_PATH) -> dict:
-    """Load the precomputed preset cache; return {} if it hasn't been generated yet."""
-    path = Path(path)
-    if path.exists():
-        return json.loads(path.read_text(encoding="utf-8"))
-    return {}
-
-
-def get_cached_result(question: str, cache: dict) -> dict | None:
-    """Return the stored result dict for a preset question, or None if not cached."""
-    return cache.get(question)
 
 
 CACHE = load_cache()
@@ -226,15 +219,9 @@ TAB1_EXAMPLES = [
     ],
 ]
 
-# Tab 2 preset questions (mirror pipeline.main()); results come from CACHE, not live Groq.
-TAB2_PRESETS = [
-    ("Grounded · in corpus", "What did Gauss contribute to number theory?"),
-    ("Grounded · out-of-corpus refusal", "Who won the 2022 FIFA World Cup?"),
-    (
-        "Ablation · no context (live-hallucination demo)",
-        "On what exact date did John von Neumann marry his second wife, Klara Dan?",
-    ),
-]
+# Tab 2 preset questions; results come from CACHE, not live Groq. The questions themselves
+# live in app/presets.py, shared with precompute_cache.py and the API's /presets endpoint.
+TAB2_PRESETS = [(p.label, p.question) for p in PRESETS]
 
 
 def build_demo() -> gr.Blocks:
