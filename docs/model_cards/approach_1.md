@@ -13,14 +13,7 @@ tags:
 - modernbert
 ---
 
-# `<APPROACH_1_HUB_REPO_TODO>` (Approach 1)
-
-**Placeholder repo name** — this card is written against the rename the project owner
-is doing before publishing; find-and-replace `<APPROACH_1_HUB_REPO_TODO>` with the
-final repo id everywhere in this file before pushing. (The current, pre-rename repo is
-`hugoomezz/deberta-v3-modernbert-ragtruth-hallucination` — note the leftover
-`deberta-v3` in that name despite this being a ModernBERT model, which is the reason
-for the rename.)
+# modernbert-ragtruth-response-level (Approach 1)
 
 Fine-tuned `answerdotai/ModernBERT-base`, binary sequence classifier for
 **response-level** RAG hallucination detection: given a `(context, response)` pair,
@@ -90,7 +83,7 @@ nondeterminism (batch composition / kernel selection), not a data or pipeline bu
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-MODEL_ID = "<APPROACH_1_HUB_REPO_TODO>"
+MODEL_ID = "hugoomezz/modernbert-ragtruth-response-level"
 tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
 model = AutoModelForSequenceClassification.from_pretrained(MODEL_ID).eval()
 

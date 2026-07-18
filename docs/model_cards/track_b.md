@@ -24,7 +24,7 @@ spans, not just a single per-response score.
 **This is the best-performing system in this project (F1 0.7619 at the response level)
 and the model deployed in the live demo** (`src/models/predict.py`), superseding both
 Track A (`hugoomezz/deberta-v3-ragtruth-hallucination`) and Approach 1
-(`<APPROACH_1_HUB_REPO_TODO>`). Its recipe matches
+(`hugoomezz/modernbert-ragtruth-response-level`). Its recipe matches
 [LettuceDetect](https://arxiv.org/abs/2502.17125)'s approach: binary token labels,
 unweighted loss, and character-overlap span evaluation.
 

@@ -108,8 +108,8 @@ models per prediction instead of one is a complexity/latency tradeoff not judged
 worthwhile here (see ADR-017's Status note); the demo runs Track B alone.
 
 Fine-tuned models: [hugoomezz/deberta-v3-ragtruth-hallucination](https://huggingface.co/hugoomezz/deberta-v3-ragtruth-hallucination)
-(Track A), [`<APPROACH_1_HUB_REPO_TODO>`](https://huggingface.co/<APPROACH_1_HUB_REPO_TODO>)
-(Approach 1 — placeholder pending Hub rename, find-and-replace once renamed),
+(Track A), [hugoomezz/modernbert-ragtruth-response-level](https://huggingface.co/hugoomezz/modernbert-ragtruth-response-level)
+(Approach 1),
 [hugoomezz/modernbert-ragtruth-token-level-binary](https://huggingface.co/hugoomezz/modernbert-ragtruth-token-level-binary)
 (Track B, deployed in the demo)
 
