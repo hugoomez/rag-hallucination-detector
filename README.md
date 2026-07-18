@@ -250,6 +250,39 @@ nothing wrong:
 This pair is the model's temperament in miniature: confident, list-padding fabrication
 gets caught; smooth, plausible-sounding embellishment of real facts slips through.
 
+## Limitations
+
+Skimmable version of what's covered in more depth in [Error analysis](#error-analysis):
+
+- **Aggregate F1 hides a large task-type spread.** Data2txt is near-solved (F1
+  0.869); Summary is the weak spot (F1 0.513, recall 0.436) — any headline number
+  needs a task-type qualifier.
+- **The detector is overconfident, not paranoid.** It misses 26.2% of hallucinated
+  responses but only false-alarms on 10.7% of faithful ones; the per-token decision
+  rule structurally favors silence over alarm.
+- **Context length looked like a driver but isn't.** The apparent swing across
+  context-length quartiles is a task-mix confound, and no test row is actually
+  truncated on the ModernBERT backbone (Track B); see
+  [ADR-010](docs/decisions.md#adr-010-empirical-truncation-impact-on-track-a-is-precision-driven-not-recall-driven)
+  for the related truncation analysis on Track A.
+- **Subtle hallucinations from strong generators are the hardest case.**
+  "Subtle"-only spans are missed 40.3% of the time, and F1 drops to ≈0.48–0.52 on
+  GPT-3.5/GPT-4 outputs — the deployment scenario that matters most.
+- **The decision threshold is a tunable tradeoff, not a fix.** Even at the most
+  aggressive (highest-recall) setting, ~16% of hallucinations still slip through —
+  a risk reducer, not a guarantee.
+- **Sensitive to close paraphrase, not just fabricated content.** Live ablation
+  testing surfaced a factually correct, context-grounded answer flagged as
+  unsupported (score 0.99) purely from paraphrasing — see
+  [docs/notes.md](docs/notes.md#phase-5--observed-false-positive-on-paraphrase-riemann-sibling-count).
+- **This measures faithfulness, not factuality.** The detector checks whether a
+  response is supported by its given context, not whether it's true in the world —
+  it can miss a faithful repetition of a wrong context, and it can flag a correct
+  claim phrased in a way the context doesn't literally support.
+- **Trained and validated only on RAGTruth's English QA / Summary / Data2txt task
+  types.** No evaluation exists on other domains, task types, or languages — treat
+  results outside that scope as unvalidated, not as a negative finding.
+
 ## RAG Pipeline (Phase 5)
 
 `src/rag/pipeline.py`'s `RAGPipeline` wires the detector into a live, working RAG system
