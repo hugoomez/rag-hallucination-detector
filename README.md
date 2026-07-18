@@ -1,12 +1,16 @@
 \# RAG Hallucination Detector
 
+A hallucination detector for RAG systems, trained and evaluated on RAGTruth. Four
+systems are compared on identical footing: a zero-shot NLI baseline, a fine-tuned
+DeBERTa-v3-base response-level classifier (Track A), a fine-tuned ModernBERT-base
+response-level classifier (Approach 1), and a fine-tuned ModernBERT-base token-level
+binary classifier (Track B). **Track B is the best-performing system (F1 0.7619,
+matching LettuceDetect-base) and the one deployed in the live demo** — unlike the
+other three, it detects hallucinations at the character-span level, not just a single
+per-response score.
 
-
-Hallucination detector for RAG systems based on DeBERTa-v3 + NLI, trained on RAGTruth.
-
-
-
-🚧 Work in progress. See `docs/00-roadmap.md` for the implementation plan.
+See [Architecture](#architecture) for how the pieces fit together, and
+[Run the demo locally with Docker](#run-the-demo-locally-with-docker-phase-6) to try it.
 
 ## Setup
 
@@ -22,7 +26,9 @@ This project trains and evaluates on [RAGTruth](https://github.com/ParticleMedia
 RAG Systems*, ACL 2024, [arXiv:2401.00396](https://arxiv.org/abs/2401.00396)), a
 word-level hallucination benchmark spanning three RAG task types (QA, Summary,
 Data2txt) with span-level annotations from human reviewers. It is MIT-licensed
-(confirmed in Phase 1 — see `data/raw/ragtruth/LICENSE`).
+(confirmed in Phase 1; reproduced durably in
+[docs/THIRD_PARTY_LICENSES.md](docs/THIRD_PARTY_LICENSES.md) since `data/raw/` itself
+is gitignored and wouldn't otherwise leave an in-repo record).
 
 ![Responses per task_type](results/eda_task_types.png)
 ![Hallucination rate by generating model](results/eda_hallucination_by_model.png)
@@ -91,8 +97,21 @@ that got it there and [ADR-014](docs/decisions.md) for the validation.
 ![Track B confusion matrix](results/confusion_matrix_track_b_modernbert.png)
 ![Precision-recall comparison across all four systems](results/pr_curve_comparison.png)
 
-Fine-tuned models: [hugoomezz/deberta-v3-ragtruth-hallucination](https://huggingface.co/hugoomezz/deberta-v3-ragtruth-hallucination),
+A 3-system ensemble (baseline NLI + Approach 1 + Track B; Track A excluded for val-split
+misalignment) pushes this further to **F1 0.7701** on test — beating Track B alone by
++0.82 points, mainly via improved recall on Summary and QA. Threshold tuning alone did
+NOT generalize (val-tuned 0.45 scored F1 0.7609 on test, slightly *worse* than the
+untuned 0.5 default), but this ensemble did. See
+[ADR-017](docs/decisions.md#adr-017-threshold-tuning-failed-to-generalize-simple-ensemble-gave-a-real-modest-win)
+for the full analysis. **The ensemble is not used in the live demo** — running three
+models per prediction instead of one is a complexity/latency tradeoff not judged
+worthwhile here (see ADR-017's Status note); the demo runs Track B alone.
+
+Fine-tuned models: [hugoomezz/deberta-v3-ragtruth-hallucination](https://huggingface.co/hugoomezz/deberta-v3-ragtruth-hallucination)
+(Track A), [`<APPROACH_1_HUB_REPO_TODO>`](https://huggingface.co/<APPROACH_1_HUB_REPO_TODO>)
+(Approach 1 — placeholder pending Hub rename, find-and-replace once renamed),
 [hugoomezz/modernbert-ragtruth-token-level-binary](https://huggingface.co/hugoomezz/modernbert-ragtruth-token-level-binary)
+(Track B, deployed in the demo)
 
 The zero-shot NLI baseline (F1 0.523) barely outperforms the trivial "always
 hallucinated" baseline (F1 0.518): with recall ≈1.0 it flags almost everything, so
@@ -276,6 +295,43 @@ controlled conditions rather than a scripted example:
 >
 > The corpus's actual answer is **November 17, 1938** — the model fabricated a wrong
 > date wholesale (and one that predates his first marriage), and the detector caught it.
+
+## Architecture
+
+The full deployed system (Phase 5/6, ADR-019) — the custom frontend and FastAPI serve
+from the same process, the RAG pipeline wires the retriever and Groq generator into the
+Track B detector, and Docker Compose packages both the primary demo and the Gradio
+fallback. Full notes in [docs/architecture.md](docs/architecture.md).
+
+```mermaid
+flowchart TD
+    User(["User (browser)"]) -->|":8000, same-origin"| FE["frontend/ (index.html + app.js)"]
+    FE --> API["FastAPI — api/main.py<br/>/detect · /ask · /presets · /health"]
+
+    API -->|"/detect: context + response"| DET["Track B Detector<br/>src/models/predict.py"]
+    API -->|"/ask: question, no_context flag"| PIPE["RAGPipeline<br/>src/rag/pipeline.py"]
+    API -->|"/presets"| PRESETS["app/presets.py<br/>cached demo Q&A"]
+
+    PIPE --> RET["Retriever: FAISS + MiniLM embeddings<br/>src/rag/retriever.py"]
+    RET -->|"top-k chunks"| CORPUS[("5-mathematician Wikipedia corpus<br/>Gauss, Euler, Riemann, Hilbert, von Neumann")]
+    PIPE -->|"question + retrieved context<br/>(withheld from generator if no_context=True)"| GROQ["Groq generator<br/>openai/gpt-oss-20b"]
+    GROQ -->|"generated answer"| DET
+    RET -->|"retrieved context always passed to detector,<br/>even in no_context ablation mode"| DET
+    DET -->|"score + color + char-offset spans"| API
+
+    User2(["User (:7860 fallback)"]) -.-> GRADIO["Gradio app — app/app.py"]
+    GRADIO --> PIPE
+    GRADIO --> DET
+
+    subgraph COMPOSE["docker compose (docker-compose.yml)"]
+        FE
+        API
+        GRADIO
+        CACHE[("hf-cache volume<br/>Track B + tokenizer + MiniLM,<br/>~600MB, pulled on first start")]
+    end
+    API -. "downloads on first start, reused after" .-> CACHE
+    GRADIO -. "downloads on first start, reused after" .-> CACHE
+```
 
 ## Run the demo locally with Docker (Phase 6)
 
