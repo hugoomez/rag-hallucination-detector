@@ -81,7 +81,7 @@ NLI_SCORES_PATHS = {
 BASELINE_METRICS_PATH = Path("results/baseline_nli_metrics.json")
 HUB_DEFAULTS = {
     SYSTEM_TRACK_A: "hugoomezz/deberta-v3-ragtruth-hallucination",
-    SYSTEM_APPROACH_1: "hugoomezz/deberta-v3-modernbert-ragtruth-hallucination",
+    SYSTEM_APPROACH_1: "hugoomezz/modernbert-ragtruth-response-level",
     SYSTEM_TRACK_B: "hugoomezz/modernbert-ragtruth-token-level-binary",
 }
 # Per-system parquet for each split. row_index (input order) is a valid cross-system

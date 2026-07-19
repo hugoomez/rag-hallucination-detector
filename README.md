@@ -1,12 +1,16 @@
-\# RAG Hallucination Detector
+# RAG Hallucination Detector
 
+A hallucination detector for RAG systems, trained and evaluated on RAGTruth. Four
+systems are compared on identical footing: a zero-shot NLI baseline, a fine-tuned
+DeBERTa-v3-base response-level classifier (Track A), a fine-tuned ModernBERT-base
+response-level classifier (Approach 1), and a fine-tuned ModernBERT-base token-level
+binary classifier (Track B). **Track B is the best-performing system (F1 0.7619,
+matching LettuceDetect-base) and the one deployed in the live demo** — unlike the
+other three, it detects hallucinations at the character-span level, not just a single
+per-response score.
 
-
-Hallucination detector for RAG systems based on DeBERTa-v3 + NLI, trained on RAGTruth.
-
-
-
-🚧 Work in progress. See `docs/00-roadmap.md` for the implementation plan.
+See [Architecture](#architecture) for how the pieces fit together, and
+[Run the demo locally with Docker](#run-the-demo-locally-with-docker-phase-6) to try it.
 
 ## Setup
 
@@ -22,7 +26,9 @@ This project trains and evaluates on [RAGTruth](https://github.com/ParticleMedia
 RAG Systems*, ACL 2024, [arXiv:2401.00396](https://arxiv.org/abs/2401.00396)), a
 word-level hallucination benchmark spanning three RAG task types (QA, Summary,
 Data2txt) with span-level annotations from human reviewers. It is MIT-licensed
-(confirmed in Phase 1 — see `data/raw/ragtruth/LICENSE`).
+(confirmed in Phase 1; reproduced durably in
+[docs/THIRD_PARTY_LICENSES.md](docs/THIRD_PARTY_LICENSES.md) since `data/raw/` itself
+is gitignored and wouldn't otherwise leave an in-repo record).
 
 ![Responses per task_type](results/eda_task_types.png)
 ![Hallucination rate by generating model](results/eda_hallucination_by_model.png)
@@ -91,8 +97,21 @@ that got it there and [ADR-014](docs/decisions.md) for the validation.
 ![Track B confusion matrix](results/confusion_matrix_track_b_modernbert.png)
 ![Precision-recall comparison across all four systems](results/pr_curve_comparison.png)
 
-Fine-tuned models: [hugoomezz/deberta-v3-ragtruth-hallucination](https://huggingface.co/hugoomezz/deberta-v3-ragtruth-hallucination),
+A 3-system ensemble (baseline NLI + Approach 1 + Track B; Track A excluded for val-split
+misalignment) pushes this further to **F1 0.7701** on test — beating Track B alone by
++0.82 points, mainly via improved recall on Summary and QA. Threshold tuning alone did
+NOT generalize (val-tuned 0.45 scored F1 0.7609 on test, slightly *worse* than the
+untuned 0.5 default), but this ensemble did. See
+[ADR-017](docs/decisions.md#adr-017-threshold-tuning-failed-to-generalize-simple-ensemble-gave-a-real-modest-win)
+for the full analysis. **The ensemble is not used in the live demo** — running three
+models per prediction instead of one is a complexity/latency tradeoff not judged
+worthwhile here (see ADR-017's Status note); the demo runs Track B alone.
+
+Fine-tuned models: [hugoomezz/deberta-v3-ragtruth-hallucination](https://huggingface.co/hugoomezz/deberta-v3-ragtruth-hallucination)
+(Track A), [hugoomezz/modernbert-ragtruth-response-level](https://huggingface.co/hugoomezz/modernbert-ragtruth-response-level)
+(Approach 1),
 [hugoomezz/modernbert-ragtruth-token-level-binary](https://huggingface.co/hugoomezz/modernbert-ragtruth-token-level-binary)
+(Track B, deployed in the demo)
 
 The zero-shot NLI baseline (F1 0.523) barely outperforms the trivial "always
 hallucinated" baseline (F1 0.518): with recall ≈1.0 it flags almost everything, so
@@ -231,6 +250,39 @@ nothing wrong:
 This pair is the model's temperament in miniature: confident, list-padding fabrication
 gets caught; smooth, plausible-sounding embellishment of real facts slips through.
 
+## Limitations
+
+Skimmable version of what's covered in more depth in [Error analysis](#error-analysis):
+
+- **Aggregate F1 hides a large task-type spread.** Data2txt is near-solved (F1
+  0.869); Summary is the weak spot (F1 0.513, recall 0.436) — any headline number
+  needs a task-type qualifier.
+- **The detector is overconfident, not paranoid.** It misses 26.2% of hallucinated
+  responses but only false-alarms on 10.7% of faithful ones; the per-token decision
+  rule structurally favors silence over alarm.
+- **Context length looked like a driver but isn't.** The apparent swing across
+  context-length quartiles is a task-mix confound, and no test row is actually
+  truncated on the ModernBERT backbone (Track B); see
+  [ADR-010](docs/decisions.md#adr-010-empirical-truncation-impact-on-track-a-is-precision-driven-not-recall-driven)
+  for the related truncation analysis on Track A.
+- **Subtle hallucinations from strong generators are the hardest case.**
+  "Subtle"-only spans are missed 40.3% of the time, and F1 drops to ≈0.48–0.52 on
+  GPT-3.5/GPT-4 outputs — the deployment scenario that matters most.
+- **The decision threshold is a tunable tradeoff, not a fix.** Even at the most
+  aggressive (highest-recall) setting, ~16% of hallucinations still slip through —
+  a risk reducer, not a guarantee.
+- **Sensitive to close paraphrase, not just fabricated content.** Live ablation
+  testing surfaced a factually correct, context-grounded answer flagged as
+  unsupported (score 0.99) purely from paraphrasing — see
+  [docs/notes.md](docs/notes.md#phase-5--observed-false-positive-on-paraphrase-riemann-sibling-count).
+- **This measures faithfulness, not factuality.** The detector checks whether a
+  response is supported by its given context, not whether it's true in the world —
+  it can miss a faithful repetition of a wrong context, and it can flag a correct
+  claim phrased in a way the context doesn't literally support.
+- **Trained and validated only on RAGTruth's English QA / Summary / Data2txt task
+  types.** No evaluation exists on other domains, task types, or languages — treat
+  results outside that scope as unvalidated, not as a negative finding.
+
 ## RAG Pipeline (Phase 5)
 
 `src/rag/pipeline.py`'s `RAGPipeline` wires the detector into a live, working RAG system
@@ -276,6 +328,19 @@ controlled conditions rather than a scripted example:
 >
 > The corpus's actual answer is **November 17, 1938** — the model fabricated a wrong
 > date wholesale (and one that predates his first marriage), and the detector caught it.
+
+## Architecture
+
+The full deployed system (Phase 5/6, ADR-019) — the custom frontend and FastAPI serve
+from the same process, the RAG pipeline wires the retriever and Groq generator into the
+Track B detector, and Docker Compose packages both the primary demo and the Gradio
+fallback. The browser hits the static frontend at `:8000` (same-origin, no CORS), the
+FastAPI backend routes `/ask` through the RAG pipeline (FAISS + MiniLM retriever → Groq
+generator) and `/detect` straight to the Track B detector, and a Gradio fallback on
+`:7860` shares the same pipeline and detector — all packaged by Docker Compose, models
+pulled into a shared cache volume on first start.
+
+See the full flowchart and notes in [docs/architecture.md](docs/architecture.md).
 
 ## Run the demo locally with Docker (Phase 6)
 
