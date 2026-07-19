@@ -1,7 +1,6 @@
 # Architecture
 
-The real, deployed system (Phase 5/6/ADR-019) — not the phase document's generic
-"DeBERTa-v3" example.
+The real, deployed system (Phase 5/6/ADR-019).
 
 ```mermaid
 flowchart TD

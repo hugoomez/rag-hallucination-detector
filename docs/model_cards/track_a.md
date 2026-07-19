@@ -39,7 +39,9 @@ further evaluation on your own data.
 [arXiv:2401.00396](https://arxiv.org/abs/2401.00396)) — MIT-licensed, reproduced in
 this project's [docs/THIRD_PARTY_LICENSES.md](https://github.com/hugoomez/rag-hallucination-detector/blob/main/docs/THIRD_PARTY_LICENSES.md).
 13,578 train / 1,511 val / 2,700 test response-level rows (~55/45 faithful/hallucinated
-split in train), class-weighted cross-entropy to counter the imbalance. Context-only
+split in train; val is one row lower than the ModernBERT-based models below because
+DeBERTa-v3's 512-token budget forced dropping a response-length outlier that they didn't
+need to — see ADR-006/ADR-011), class-weighted cross-entropy to counter the imbalance. Context-only
 truncation at 512 tokens (ADR-004): the response is always fully preserved, only the
 context's head is truncated when the combined length exceeds the budget (this affects
 70.34% of rows at DeBERTa-v3's 512-token limit).

@@ -1,4 +1,4 @@
-\# RAG Hallucination Detector
+# RAG Hallucination Detector
 
 A hallucination detector for RAG systems, trained and evaluated on RAGTruth. Four
 systems are compared on identical footing: a zero-shot NLI baseline, a fine-tuned
@@ -334,37 +334,13 @@ controlled conditions rather than a scripted example:
 The full deployed system (Phase 5/6, ADR-019) — the custom frontend and FastAPI serve
 from the same process, the RAG pipeline wires the retriever and Groq generator into the
 Track B detector, and Docker Compose packages both the primary demo and the Gradio
-fallback. Full notes in [docs/architecture.md](docs/architecture.md).
+fallback. The browser hits the static frontend at `:8000` (same-origin, no CORS), the
+FastAPI backend routes `/ask` through the RAG pipeline (FAISS + MiniLM retriever → Groq
+generator) and `/detect` straight to the Track B detector, and a Gradio fallback on
+`:7860` shares the same pipeline and detector — all packaged by Docker Compose, models
+pulled into a shared cache volume on first start.
 
-```mermaid
-flowchart TD
-    User(["User (browser)"]) -->|":8000, same-origin"| FE["frontend/ (index.html + app.js)"]
-    FE --> API["FastAPI — api/main.py<br/>/detect · /ask · /presets · /health"]
-
-    API -->|"/detect: context + response"| DET["Track B Detector<br/>src/models/predict.py"]
-    API -->|"/ask: question, no_context flag"| PIPE["RAGPipeline<br/>src/rag/pipeline.py"]
-    API -->|"/presets"| PRESETS["app/presets.py<br/>cached demo Q&A"]
-
-    PIPE --> RET["Retriever: FAISS + MiniLM embeddings<br/>src/rag/retriever.py"]
-    RET -->|"top-k chunks"| CORPUS[("5-mathematician Wikipedia corpus<br/>Gauss, Euler, Riemann, Hilbert, von Neumann")]
-    PIPE -->|"question + retrieved context<br/>(withheld from generator if no_context=True)"| GROQ["Groq generator<br/>openai/gpt-oss-20b"]
-    GROQ -->|"generated answer"| DET
-    RET -->|"retrieved context always passed to detector,<br/>even in no_context ablation mode"| DET
-    DET -->|"score + color + char-offset spans"| API
-
-    User2(["User (:7860 fallback)"]) -.-> GRADIO["Gradio app — app/app.py"]
-    GRADIO --> PIPE
-    GRADIO --> DET
-
-    subgraph COMPOSE["docker compose (docker-compose.yml)"]
-        FE
-        API
-        GRADIO
-        CACHE[("hf-cache volume<br/>Track B + tokenizer + MiniLM,<br/>~600MB, pulled on first start")]
-    end
-    API -. "downloads on first start, reused after" .-> CACHE
-    GRADIO -. "downloads on first start, reused after" .-> CACHE
-```
+See the full flowchart and notes in [docs/architecture.md](docs/architecture.md).
 
 ## Run the demo locally with Docker (Phase 6)
 

@@ -1,200 +1,62 @@
-\# Architecture Decision Records (ADR)
-
-
+# Architecture Decision Records (ADR)
 
 Log of key technical decisions made throughout the project, with their rationale.
 
+---
 
+## ADR-001: Use DeBERTa-v3-base as the base encoder
 
-\---
+**Context:** Need to choose a pretrained transformer encoder to fine-tune for hallucination detection, framed as an NLI-style classification task (premise = retrieved context, hypothesis = answer claim).
 
+**Decision:** Use `microsoft/deberta-v3-base`.
 
+**Rationale:**
 
-\## ADR-001: Use DeBERTa-v3-base as the base encoder
+- He et al. (2021) show DeBERTa consistently outperforms BERT, RoBERTa, and XLNet specifically on MNLI (the NLI benchmark), not just on average across tasks.
+- DeBERTa's disentangled attention mechanism separates content and position representations, which helps capture syntactic nuances (subject vs. object, negation) relevant to detecting contradiction vs. entailment.
+- v3 (vs. v1) uses ELECTRA-style Replaced Token Detection pretraining instead of MLM, giving a training signal on 100% of tokens instead of only the masked 15% — a stronger pretrained model at the same size.
+- `base` size runs comfortably on a free Colab T4 GPU (16GB), no paid compute required.
 
+**Alternatives considered:** RoBERTa-base (weaker on MNLI per the DeBERTa paper).
 
+---
 
-\*\*Context:\*\* Need to choose a pretrained transformer encoder to fine-tune for hallucination
+## ADR-002: Train on Google Colab (free tier)
 
-detection, framed as an NLI-style classification task (premise = retrieved context,
+**Context:** Need to decide where to run training.
 
-hypothesis = answer claim).
+**Decision:** Google Colab, free T4 GPU tier.
 
+**Rationale:** Sufficient VRAM (16GB) for DeBERTa-v3-base fine-tuning; no cost; no local GPU available. Kaggle Notebooks considered as a backup option if Colab quota runs out.
 
+---
 
-\*\*Decision:\*\* Use `microsoft/deberta-v3-base`.
+## ADR-003: Repository language — English
 
+**Context:** The project is a public portfolio piece.
 
+**Decision:** All code, comments, commit messages, and documentation in English; working conversations with the AI copilot in Spanish.
 
-\*\*Rationale:\*\*
+**Rationale:** English is the industry standard for public repos reviewed by recruiters and other engineers.
 
-\- He et al. (2021) show DeBERTa consistently outperforms BERT, RoBERTa, and XLNet
+---
 
-&#x20; specifically on MNLI (the NLI benchmark), not just on average across tasks.
+## ADR-004: Long-context truncation strategy for DeBERTa-v3 input
 
-\- DeBERTa's disentangled attention mechanism separates content and position
+**Context:** EDA on RAGTruth (Phase 1) showed that 70.34% of rows exceed DeBERTa-v3's 512-token limit when concatenating context + response + special tokens. This is highly non-uniform across task types: QA 34.31% exceed, Summary 75.77%, Data2txt 99.89%. Naive truncation also disproportionately harms hallucinated rows (50.52% of truncated rows are hallucinated vs. 43.08% globally), since evidence needed to verify faithfulness is lost. Responses are almost always under 512 tokens alone (mean 160), so the response should never be the one truncated. Extended research surveyed the RAGTruth leaderboard (Luna, LettuceDetect, RAGTruth/RAG-HAT baselines), truncation techniques (Sun et al. 2019 head/tail/head+tail), long-context encoders (ModernBERT, Longformer, BigBird), and claim-decomposition + retrieval approaches (AlignScore, MiniCheck, RefChecker).
 
-&#x20; representations, which helps capture syntactic nuances (subject vs. object, negation)
+**Decision:** Phased approach across three stages:
 
-&#x20; relevant to detecting contradiction vs. entailment.
+1. **MVP (now):** Keep DeBERTa-v3-base (per ADR-001). Truncate the CONTEXT only, always preserving the full response + question. Train/evaluate separately by `task_type` (QA / Summary / Data2txt) to quantify the real cost of truncation per task before solving it further. This is the honest baseline against which later gains are measured.
+2. **Approach 1 (next):** Reproduce the LettuceDetect recipe by switching the backbone to ModernBERT-base (149M params, native 8,192-token context, fits the free Colab T4 with `attn_implementation="sdpa"` since FlashAttention 2 is unsupported on Turing GPUs). Token-classification head, ~4,096-token inputs, non-response tokens masked with -100. This eliminates ~99% of the truncation problem with comparatively low engineering effort, matching current encoder SOTA on RAGTruth (~76-79% F1).
+3. **Approach 3 (advanced/capstone):** Claim/sentence decomposition + retrieval + NLI, AlignScore/MiniCheck-style: split the response into sentences, retrieve top-k relevant context chunks per sentence with a small bi-encoder, run the fine-tuned DeBERTa-v3 NLI check per (chunk, sentence) pair, aggregate (max-entailment per sentence). Sidesteps the token limit entirely by design and is the most system-design-mature of the three approaches considered — the intended flagship deliverable of the project.
 
-\- v3 (vs. v1) uses ELECTRA-style Replaced Token Detection pretraining instead of MLM,
+**Alternatives considered:**
 
-&#x20; giving a training signal on 100% of tokens instead of only the masked 15% — a stronger
+- Sliding-window DeBERTa-v3 (Luna-style, per-window label propagation + max-support aggregation): valid and demonstrates deep mastery of the ADR-001 constraint, but higher implementation complexity than Approach 1 for comparable gains. Deprioritized in favor of Approach 1 → Approach 3, revisited only if Approach 1's results are unsatisfactory.
+- Head+tail truncation (Sun et al. 2019): rejected as a long-term fix — its motivating assumption (salient info clusters at document start/end) does not hold for RAGTruth's Data2txt (structured data) or Summary (evidence scattered throughout).
 
-&#x20; pretrained model at the same size.
-
-\- `base` size runs comfortably on a free Colab T4 GPU (16GB), no paid compute required.
-
-
-
-\*\*Alternatives considered:\*\* RoBERTa-base (weaker on MNLI per the DeBERTa paper).
-
-
-
-\---
-
-
-
-\## ADR-002: Train on Google Colab (free tier)
-
-
-
-\*\*Context:\*\* Need to decide where to run training.
-
-
-
-\*\*Decision:\*\* Google Colab, free T4 GPU tier.
-
-
-
-\*\*Rationale:\*\* Sufficient VRAM (16GB) for DeBERTa-v3-base fine-tuning; no cost; no local
-
-GPU available. Kaggle Notebooks considered as a backup option if Colab quota runs out.
-
-
-
-\---
-
-
-
-\## ADR-003: Repository language — English
-
-
-
-\*\*Context:\*\* The project is a public portfolio piece.
-
-
-
-\*\*Decision:\*\* All code, comments, commit messages, and documentation in English; working
-
-conversations with the AI copilot in Spanish.
-
-
-
-\*\*Rationale:\*\* English is the industry standard for public repos reviewed by recruiters
-
-and other engineers.
-
-
-
-\---
-
-
-
-\## ADR-004: Long-context truncation strategy for DeBERTa-v3 input
-
-
-
-\*\*Context:\*\* EDA on RAGTruth (Phase 1) showed that 70.34% of rows exceed
-
-DeBERTa-v3's 512-token limit when concatenating context + response + special tokens.
-
-This is highly non-uniform across task types: QA 34.31% exceed, Summary 75.77%, Data2txt
-
-99.89%. Naive truncation also disproportionately harms hallucinated rows (50.52% of
-
-truncated rows are hallucinated vs. 43.08% globally), since evidence needed to verify
-
-faithfulness is lost. Responses are almost always under 512 tokens alone (mean 160), so
-
-the response should never be the one truncated.
-
-
-
-Extended research (see `docs/research/long-context-truncation.md` or equivalent)
-
-surveyed the RAGTruth leaderboard (Luna, LettuceDetect, RAGTruth/RAG-HAT baselines),
-
-truncation techniques (Sun et al. 2019 head/tail/head+tail), long-context encoders
-
-(ModernBERT, Longformer, BigBird), and claim-decomposition + retrieval approaches
-
-(AlignScore, MiniCheck, RefChecker).
-
-
-
-\*\*Decision:\*\* Phased approach across three stages:
-
-
-
-1\. \*\*MVP (now):\*\* Keep DeBERTa-v3-base (per ADR-001). Truncate the CONTEXT only, always
-
-&#x20; preserving the full response + question. Train/evaluate separately by `task_type` (QA /
-
-&#x20; Summary / Data2txt) to quantify the real cost of truncation per task before solving it
-
-&#x20; further. This is the honest baseline against which later gains are measured.
-
-2\. \*\*Approach 1 (next):\*\* Reproduce the LettuceDetect recipe by switching the backbone
-
-&#x20; to ModernBERT-base (149M params, native 8,192-token context, fits the free Colab T4 with
-
-&#x20; `attn_implementation="sdpa"` since FlashAttention 2 is unsupported on Turing GPUs).
-
-&#x20; Token-classification head, ~4,096-token inputs, non-response tokens masked with -100.
-
-&#x20; This eliminates ~99% of the truncation problem with comparatively low engineering
-
-&#x20; effort, matching current encoder SOTA on RAGTruth (~76-79% F1).
-
-3\. \*\*Approach 3 (advanced/capstone):\*\* Claim/sentence decomposition + retrieval + NLI,
-
-&#x20; AlignScore/MiniCheck-style: split the response into sentences, retrieve top-k relevant
-
-&#x20; context chunks per sentence with a small bi-encoder, run the fine-tuned DeBERTa-v3 NLI
-
-&#x20; check per (chunk, sentence) pair, aggregate (max-entailment per sentence). Sidesteps the
-
-&#x20; token limit entirely by design and is the most system-design-mature of the three
-
-&#x20; approaches considered — the intended flagship deliverable of the project.
-
-
-
-\*\*Alternatives considered:\*\*
-
-
-
-\- Sliding-window DeBERTa-v3 (Luna-style, per-window label propagation + max-support
-
-&#x20; aggregation): valid and demonstrates deep mastery of the ADR-001 constraint, but higher
-
-&#x20; implementation complexity than Approach 1 for comparable gains. Deprioritized in favor
-
-&#x20; of Approach 1 → Approach 3, revisited only if Approach 1's results are unsatisfactory.
-
-\- Head+tail truncation (Sun et al. 2019): rejected as a long-term fix — its motivating
-
-&#x20; assumption (salient info clusters at document start/end) does not hold for RAGTruth's
-
-&#x20; Data2txt (structured data) or Summary (evidence scattered throughout).
-
-
-
-\*\*Status:\*\* MVP in progress. Approach 1 planned as next milestone. Approach 3
-
-planned as capstone/advanced deliverable.
+**Status:** MVP shipped (Phase 1-2, Track A). Approach 1 shipped — see ADR-011 (truncation eliminated on ModernBERT) and ADR-012 (results). Approach 3 (claim decomposition + retrieval) was never built: once Track B (binary token-level classification, ADR-013/ADR-014) matched LettuceDetect and became the project's best-performing model, it superseded Approach 3 as the flagship deliverable — Track B already delivers exact-span granularity on truncation-free ModernBERT input, which was Approach 3's main motivation, at lower implementation cost. This entry is kept as the original decision trail, not as a live roadmap.
 
 ---
 
@@ -245,7 +107,7 @@ typically a DIFFERENT context sentence entirely.
 
 **Decision:** Track max entailment and max contradiction independently across
 context sentences (potentially from two different sentences), rather than
-taking one sentence's full triple. Flag priority: contradicted -> supported ->
+taking one sentence's full triple. Flag priority: contradicted → supported →
 unverifiable. The resulting (entailment, contradiction) pair does not sum to 1
 with an implied neutral value — it represents two independent signals, not one
 sentence's complete output — but this is necessary for the aggregation to
@@ -259,6 +121,8 @@ contradictions due to the softmax constraint described above.
 **Status:** Implemented in src/models/nli_baseline.py, verified via a real-model
 smoke test (contradicting date claim correctly flagged despite low entailment
 from the best-supporting context sentence).
+
+---
 
 ## ADR-008: Task-type-aware context chunking for the NLI baseline
 
@@ -301,7 +165,7 @@ chunks with zero JSON-syntax leaks.
 **Context:** The zero-shot NLI baseline (F1=0.523 on test) barely outperformed the
 "always hallucinated" trivial baseline (F1=0.518). A diagnostic on cached val scores
 (scripts/diagnose_baseline_flagging.py) found the root cause is NOT the aggregation
-rule ("any sentence not-supported -> hallucinated"), but poor calibration of the raw
+rule ("any sentence not-supported → hallucinated"), but poor calibration of the raw
 per-sentence NLI scores themselves:
 - Among genuinely faithful (label_response=0) sentences, the contradicted flag fires
   on 55.7% of them, nearly identical to the 53.8% rate among hallucinated sentences
@@ -370,6 +234,8 @@ than assumed to be fully solved by a longer-context backbone alone.
 **Status:** Documented. Informs Phase 4's evaluation design and Approach 1/3
 expectations.
 
+---
+
 ## ADR-011: ModernBERT eliminates truncation entirely on RAGTruth
 
 **Context:** ADR-004 hypothesized that switching to a long-context encoder
@@ -393,6 +259,8 @@ and Summary?
 
 **Status:** Data pipeline complete and verified. Training pending.
 
+---
+
 ## ADR-012: ModernBERT Approach 1 results — recall-driven improvement, not precision-driven
 
 **Context:** ADR-010 hypothesized that eliminating context truncation (via ADR-011's
@@ -402,10 +270,10 @@ positives under uncertainty.
 
 **Finding:** The real controlled comparison (same task, same training recipe,
 different backbone/context length) showed a different mechanism than predicted.
-Overall test F1 improved (0.7116 -> 0.7257), but PRECISION actually decreased
-slightly (0.7367 -> 0.6839) while RECALL improved substantially (0.6882 -> 0.7731).
+Overall test F1 improved (0.7116 → 0.7257), but PRECISION actually decreased
+slightly (0.7367 → 0.6839) while RECALL improved substantially (0.6882 → 0.7731).
 The improvement is heavily concentrated in Summary, where recall more than doubled
-(0.245 -> 0.569, +0.324) and F1 rose from 0.332 to 0.509 -- the task type with the
+(0.245 → 0.569, +0.324) and F1 rose from 0.332 to 0.509 — the task type with the
 longest, most dispersed evidence requirements, and the one ADR-010 flagged as having
 a recall weakness NOT well-explained by truncation status alone under the 512-token
 architecture. QA and Data2txt saw only marginal changes (already performing well
@@ -418,7 +286,7 @@ locate evidence scattered across a full long document (raising recall), rather t
 reduced false-positive behavior under partial-context uncertainty (which would have
 raised precision). This is a useful methodological lesson: correlational diagnostics
 on a fixed architecture (ADR-010) do not necessarily predict the causal effect of
-changing that architecture (ADR-012) -- both findings are valid but answer different
+changing that architecture (ADR-012) — both findings are valid but answer different
 questions.
 
 **Decision:** Approach 1 (ModernBERT, response-level) is adopted as the stronger
@@ -431,6 +299,8 @@ LettuceDetect SOTA recipe referenced throughout this project's research.
 **Status:** Response-level comparison complete. Track B (token-level, ModernBERT)
 planned next.
 
+---
+
 ## ADR-013: Pivot Track B from 3-class BIO to binary token labels (LettuceDetect parity)
 
 **Context:** Track B's first training run (5 epochs, BIO scheme O/B-HALL/I-HALL,
@@ -438,7 +308,7 @@ inverse-frequency class weights [0.34, 95.24, 12.53]) produced a very low
 span-level seqeval F1 (0.037), though it was still monotonically improving with
 no plateau. A code review + SOTA comparison against LettuceDetect
 (arXiv:2502.17125) found two compounding issues: (1) LettuceDetect uses BINARY
-token labels (supported/hallucinated), not BIO -- our 3-class scheme creates an
+token labels (supported/hallucinated), not BIO — our 3-class scheme creates an
 ultra-rare B-HALL class (0.35% of tokens); (2) the resulting 95x inverse-frequency
 weight on B-HALL actively rewards fragmenting real spans into many separate
 B-HALL predictions (each scored as a failed entity by seqeval's exact-match
@@ -447,7 +317,7 @@ scoring), which is consistent with the observed precision collapse
 our reported metric (strict seqeval exact-entity F1) was being compared against
 LettuceDetect's EXAMPLE-level F1 (76-79%), not their actual span-level metric
 (55.4-58.9%, computed via character-overlap, a more lenient standard than exact
-match) -- an unfair comparison independent of the modeling issue.
+match) — an unfair comparison independent of the modeling issue.
 
 **Decision:** Redesign Track B to match LettuceDetect's actual recipe:
 - Binary token labels (0=supported, 1=hallucinated) instead of BIO, eliminating
@@ -459,18 +329,20 @@ match) -- an unfair comparison independent of the modeling issue.
   instead of the training objective.
 - Report BOTH the derived response-level F1 (already implemented, comparable to
   LettuceDetect's 76-79% example-level F1) and a new character-overlap span F1
-  (comparable to their 55.4-58.9% span-level F1) -- retire strict seqeval
+  (comparable to their 55.4-58.9% span-level F1) — retire strict seqeval
   exact-match as the headline metric, keep it only as a secondary strict measure.
 - Train for 6-8 epochs (vs. the prior run's 5, which was still improving when
   capped), with checkpoint selection on the derived response-level F1 rather
   than the previously noisy/degenerate span metric.
 
-**Alternatives considered:** Simply training the existing BIO scheme longer --
+**Alternatives considered:** Simply training the existing BIO scheme longer —
 rejected as the primary fix, since the weighting issue (not epoch count alone)
 was diagnosed as actively working against correct span formation; more epochs
 alone would not resolve the fragmentation incentive.
 
 **Status:** Redesign in progress.
+
+---
 
 ## ADR-014: ADR-013's binary-scheme pivot validated — Track B matches LettuceDetect
 
@@ -483,9 +355,9 @@ classification, unweighted loss, char-overlap span evaluation, and 8 epochs
 **Finding:** The redesign succeeded, closely matching published LettuceDetect-base
 numbers on the same benchmark:
 - Response/example-level F1: 76.11% (ours) vs. 76.07% (LettuceDetect-base
-  published) -- a 0.04-point difference, functionally equivalent.
+  published) — a 0.04-point difference, functionally equivalent.
 - Span-level (char-overlap) F1: 51.13% (ours) vs. 55.44% (LettuceDetect-base
-  published) -- close, somewhat below, plausibly explainable by their A100
+  published) — close, somewhat below, plausibly explainable by their A100
   training vs. our T4-constrained batch size/epochs, or minor implementation
   differences in span merging.
 - This also makes Track B the best-performing system in this project at
@@ -503,6 +375,8 @@ independently-designed BIO variant was the key correction.
 **Status:** Complete. Track B (binary token classification) adopted as the
 project's best-performing model. Model published at
 hugoomezz/modernbert-ragtruth-token-level-binary.
+
+---
 
 ## ADR-015: Baseline y_score = max over sentences of max(contradiction, 1 - entailment)
 
@@ -530,32 +404,34 @@ PR curves).
 **Status:** Implemented in scripts/collect_predictions.py (baseline mode); verified by
 reproducing results/baseline_nli_metrics.json test metrics from the unified table.
 
+---
+
 ## ADR-016: No-context ablation mode for RAG demo hallucination demonstration
 
 **Context:** Phase 5's Step 5A.5 requires demonstrating the detector catching
 an induced hallucination in the live RAG pipeline. Live testing of the
 grounded prompt (RAG_PROMPT, requiring the model to answer only from context
 or explicitly refuse) across ~12 adversarial bait questions with
-openai/gpt-oss-20b and qwen produced ZERO natural hallucinations -- the model
+openai/gpt-oss-20b and qwen produced ZERO natural hallucinations — the model
 either answered correctly from genuinely retrieved context, or used the
 sanctioned refusal. This is evidence the prompt engineering succeeded, not a
-pipeline failure -- but it leaves no natural demonstration case.
+pipeline failure — but it leaves no natural demonstration case.
 
 **Decision:** Add an explicit, clearly-labeled ablation mode to RAGPipeline:
 retrieve the REAL context via the retriever (so the detector has genuine
 ground truth to check the answer against), but generate the answer WITHOUT
 showing the model that context, forcing it to answer from parametric
 knowledge alone. This creates an honest, real mismatch for the detector to
-catch -- the same principle used in hallucination red-teaming (deliberately
+catch — the same principle used in hallucination red-teaming (deliberately
 removing grounding to test a safety mechanism), not a fabricated or
 cherry-picked example. The pipeline's output must clearly label when this
 mode was used (e.g. an "ablation": true field), so it's never confused with
 normal grounded operation.
 
 **Alternatives considered:** Weakening the RAG_PROMPT's grounding instruction
--- rejected, since it would undermine the very mechanism that makes normal
+— rejected, since it would undermine the very mechanism that makes normal
 pipeline operation trustworthy, for the sake of an easier demo. Canned/
-pre-recorded hallucinated examples from the RAGTruth test set -- valid as a
+pre-recorded hallucinated examples from the RAGTruth test set — valid as a
 supplementary backup, but doesn't demonstrate the LIVE pipeline catching a
 real-time hallucination, which is Phase 5's specific goal.
 
@@ -565,6 +441,8 @@ against genuine context), but `generate()` is called with the separate
 NO_CONTEXT_PROMPT template instead of RAG_PROMPT, so the model never sees
 that context. The returned dict carries `"ablation": true` when used.
 Covered by hermetic tests in tests/test_pipeline.py.
+
+---
 
 ## ADR-017: Threshold tuning failed to generalize; simple ensemble gave a real, modest win
 
@@ -581,27 +459,29 @@ to test exactly once, per this project's established discipline.
   fitting val-specific noise rather than a transferable pattern.
 - The 3-system ensemble (baseline_nli, approach_1_modernbert,
   track_b_modernbert; track_a_deberta excluded due to val misalignment) DID
-  generalize: val F1 0.7997 -> test F1 0.7701, beating Track B alone (0.7619)
-  by +0.82 points, mainly via improved recall on Summary and QA -- directly
+  generalize: val F1 0.7997 → test F1 0.7701, beating Track B alone (0.7619)
+  by +0.82 points, mainly via improved recall on Summary and QA — directly
   addressing Phase 4's diagnosed weak spots.
 
 **Decision:** Adopt the 3-system ensemble's exact weights/threshold as
 documented in results/threshold_ensemble_tuning.json as an available
 "best measured" configuration, reported alongside Track B alone in the
 README comparison table. Do NOT adopt tuned thresholds (global or per-task)
-as the new operating point for Track B -- the untuned 0.5 default remains
+as the new operating point for Track B — the untuned 0.5 default remains
 the reported operating point for that model specifically.
 
 **Status:** Complete. Whether the ensemble becomes the model that powers the
 live RAG demo (Phase 5/6) is a separate decision (three models running per
-prediction vs. one -- complexity/latency trade-off), tracked separately.
+prediction vs. one — complexity/latency trade-off), tracked separately.
+
+---
 
 ## ADR-018: Skip public HF Spaces deployment in favor of local Docker reproduction
 
 **Context:** Phase 6 originally planned a public Hugging Face Space (Gradio
 SDK, CPU Basic hardware) per the phase document. During deployment, HF
 confirmed (via a 402 Payment Required response and their own official docs)
-that hosting a personal Gradio Space -- on CPU Basic OR ZeroGPU -- now
+that hosting a personal Gradio Space — on CPU Basic OR ZeroGPU — now
 requires a PRO subscription ($9/month, recurring, confirmed not a one-time
 fee). This is a recent platform change (corroborated by a matching HF forum
 thread from the same week) not anticipated by the original phase document.
@@ -615,16 +495,19 @@ implementation is fresh, rather than requiring a live demo to prove
 functionality).
 
 **Alternatives considered:**
-- HF Pro subscription ($9/month recurring) -- rejected as an ongoing cost
+- HF Pro subscription ($9/month recurring) — rejected as an ongoing cost
   disproportionate to expected demo traffic for a portfolio project.
 - Self-hosting on Oracle Cloud's Always Free tier (VM, systemd, security
-  groups) -- rejected as it trades a small recurring cost for a larger
-  ongoing maintenance/security burden (patching, uptime, SSH key
-  management), a poor trade for a project meant to showcase ML engineering,
-  not infrastructure operations.
+  groups) — rejected: Oracle's Always Free tier itself has no recurring
+  fee, but self-managing it trades HF Pro's small recurring cost for a
+  larger ongoing maintenance/security burden instead (patching, uptime, SSH
+  key management), a poor trade for a project meant to showcase ML
+  engineering, not infrastructure operations.
 
 **Status:** Implemented via Docker packaging (see below).
 
+
+---
 
 ## ADR-019: Replace the Gradio demo with a custom same-origin frontend
 
@@ -633,7 +516,7 @@ callbacks and helpers are tested, but every Gradio app looks like every other
 Gradio app. As the primary artifact a reader sees first, that is a real cost
 for a portfolio project: the visual layer says nothing about what the system
 does or how much care went into it. Two things blocked a custom UI. First,
-api/main.py only wrapped Detector.predict() via POST /detect -- the retriever,
+api/main.py only wrapped Detector.predict() via POST /detect — the retriever,
 RAGPipeline, Groq client and the demo_cache.json presets existed only inside
 the Gradio process, so a browser had no way to reach live RAG. Second, nothing
 in the repo served static files.
@@ -649,7 +532,7 @@ a working fallback on :7860.
 fetch("/detect") same-origin by construction, so CORSMiddleware is never added
 at all. A separate origin would have required a compose service, an
 allow_origins list, and a build- or run-time mechanism to tell the JS where the
-API lives -- three pieces of configuration that can only ever be wrong, bought
+API lives — three pieces of configuration that can only ever be wrong, bought
 for no benefit, since there is no CDN, no separate deploy target and no other
 API consumer. It also costs almost nothing structurally: ADR-018 already builds
 ONE image that compose runs two ways, and the `app` service never talked to
@@ -667,20 +550,20 @@ Two smaller decisions fell out of this. GenerationError gained a `kind`
 attribute (rate_limit / connection / api_error / empty_completion) so /ask can
 map failures to status codes (429 for a rate limit, 502 otherwise) and the
 frontend can style them, without matching on message text; the messages
-themselves are unchanged. And the three preset questions -- previously
+themselves are unchanged. And the three preset questions — previously
 duplicated across app/app.py, app/precompute_cache.py and pipeline.main() in
-three drifting shapes -- moved to app/presets.py, which the API imports instead
+three drifting shapes — moved to app/presets.py, which the API imports instead
 of app/app.py (importing the latter would drag gradio into the API process).
 
 **Design:** The frontend takes its identity from the subject rather than from a
 template. The page is a near-monochrome cool grey, and the three traffic-light
 colors are the only saturated things on it, so it stays silent until the
-detector speaks -- which is what integrates the traffic light into the design
+detector speaks — which is what integrates the traffic light into the design
 instead of bolting an emoji onto a card. Three IBM Plex cuts are each reserved
 for one meaning: condensed sans is the interface talking, serif is text the
 model read or wrote, mono is numbers the model produced. The signature element
-is the assay gauge, which draws the verdict as what it actually is -- a
-threshold on one scalar -- with the 0.45-0.50 amber band at true scale, i.e. 5%
+is the assay gauge, which draws the verdict as what it actually is — a
+threshold on one scalar — with the 0.45-0.50 amber band at true scale, i.e. 5%
 of the width. That makes "borderline is a hair's breadth" something the reader
 sees rather than something we claim. Fonts are self-hosted woff2 (OFL, ~69 KB
 total) so the design renders identically offline, which a CDN link would not,
@@ -688,10 +571,10 @@ and which ADR-018's "identical experience locally" claim depends on.
 
 **Alternatives considered:**
 - A separate static origin (nginx or a third compose service) with
-  CORSMiddleware -- rejected above: pure configuration cost, no benefit here.
-- Deleting the Gradio app -- rejected for now. It is working, tested code and a
+  CORSMiddleware — rejected above: pure configuration cost, no benefit here.
+- Deleting the Gradio app — rejected for now. It is working, tested code and a
   genuine fallback; keeping it costs a compose service that was already there.
-- A JS framework and build step -- rejected. The only real frontend logic is
+- A JS framework and build step — rejected. The only real frontend logic is
   wrapping character offsets in <mark> tags, which is a dozen lines of string
   slicing. A toolchain would add a build to a repo that currently has none.
 
@@ -699,6 +582,6 @@ and which ADR-018's "identical experience locally" claim depends on.
 pipeline_loaded, static mount), app/presets.py, and src/rag/pipeline.py
 (GenerationError.kind). Frontend JS interaction is not unit-tested (no JS
 toolchain in this repo); it is scoped the same way app/app.py's Gradio
-callbacks were -- logic worth testing is tested in Python, and the integration
+callbacks were — logic worth testing is tested in Python, and the integration
 risk that matters (mount ordering, endpoint contracts) is covered in
 tests/test_api.py.

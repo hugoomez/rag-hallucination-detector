@@ -38,7 +38,9 @@ further evaluation.
 [RAGTruth](https://github.com/ParticleMedia/RAGTruth) (Niu et al., 2024, ACL,
 [arXiv:2401.00396](https://arxiv.org/abs/2401.00396)) — MIT-licensed, reproduced in
 this project's [docs/THIRD_PARTY_LICENSES.md](https://github.com/hugoomez/rag-hallucination-detector/blob/main/docs/THIRD_PARTY_LICENSES.md).
-13,578 train / 1,512 val / 2,700 test response-level rows, class-weighted cross-entropy.
+13,578 train / 1,512 val / 2,700 test response-level rows (one more val row than Track A —
+its 4096-token budget didn't need to drop the ADR-006 response-length outlier), class-weighted
+cross-entropy.
 Tokenized at `max_length=4096`, which eliminates truncation entirely on RAGTruth (0.00%
 of rows truncated, vs. 70.34% at DeBERTa-v3's 512-token limit).
 

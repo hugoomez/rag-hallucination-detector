@@ -43,8 +43,8 @@ data and threshold.
 [RAGTruth](https://github.com/ParticleMedia/RAGTruth) (Niu et al., 2024, ACL,
 [arXiv:2401.00396](https://arxiv.org/abs/2401.00396)) — MIT-licensed, reproduced in
 this project's [docs/THIRD_PARTY_LICENSES.md](https://github.com/hugoomez/rag-hallucination-detector/blob/main/docs/THIRD_PARTY_LICENSES.md).
-13,578 train / 1,512 val / 2,700 test rows, tokenized at `max_length=4096` (0% of rows
-truncated). Per-token binary labels: 0 = supported, 1 = hallucinated (any character
+13,578 train / 1,512 val / 2,700 test rows (one more val row than Track A — see ADR-006/
+ADR-011), tokenized at `max_length=4096` (0% of rows truncated). Per-token binary labels: 0 = supported, 1 = hallucinated (any character
 overlap with a gold annotated span); context and special tokens are ignored in the
 loss (label -100). Plain cross-entropy, **no class weighting** — an earlier 3-class BIO
 scheme with inverse-frequency weighting on an ultra-rare class caused near-total span

@@ -1,5 +1,14 @@
 # Running the NLI baseline on Kaggle (GPU)
 
+> **Historical Phase-2 artifact.** This walkthrough documents the exact steps used to
+> run the zero-shot NLI baseline on Kaggle early in the project, kept for reference. It
+> predates `main` and some details are stale: it clones a since-merged feature branch,
+> and Section 4b's "no full-set scoring runner exists yet" note is no longer true — that
+> runner was built (`scripts/evaluate_baseline.py` + `scripts/collect_predictions.py`)
+> and is wired into the `evaluate` target in the [Makefile](../Makefile). For current
+> reproduction instructions, run `make evaluate` (see the README) rather than following
+> Section 4b below.
+
 The zero-shot NLI baseline is impractical on CPU: a single Summary row takes ~15–110s
 (it scores every response sentence against every context chunk, and Summary contexts have
 20–48 chunks). On a Kaggle GPU the same work runs ~10–20× faster, making a full val/test
