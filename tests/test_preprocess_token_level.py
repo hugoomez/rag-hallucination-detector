@@ -5,6 +5,7 @@ from src.data.preprocess_token_level import (
     HALLUCINATED_LABEL,
     IGNORE_LABEL,
     SUPPORTED_LABEL,
+    is_noisy_span,
     normalize_spans,
     tokenize_and_align_labels,
 )
@@ -96,6 +97,73 @@ def test_token_offsets_align_with_input_ids(tokenizer):
     result = tokenize_and_align_labels(CONTEXT, RESPONSE, [], tokenizer, max_length=128)
     assert len(result["token_starts"]) == len(result["input_ids"])
     assert len(result["token_ends"]) == len(result["input_ids"])
+
+
+def response_flags_for(spans: list[dict], tokenizer) -> list[bool]:
+    """is_implicit_true flags for the response tokens only (parallel to response_labels_for)."""
+    result = tokenize_and_align_labels(CONTEXT, RESPONSE, spans, tokenizer, max_length=128)
+    sequence_ids = tokenizer(CONTEXT, RESPONSE, max_length=128, truncation="only_first").sequence_ids()
+    return [flag for flag, seq_id in zip(result["is_implicit_true"], sequence_ids) if seq_id == 1]
+
+
+class TestIsNoisySpan:
+    def test_implicit_true_not_due_to_null_is_noisy(self):
+        assert is_noisy_span({"implicit_true": True, "due_to_null": False}) is True
+
+    def test_implicit_true_but_due_to_null_is_not_noisy(self):
+        # due_to_null spans are genuine hallucinations over null fields -- full weight.
+        assert is_noisy_span({"implicit_true": True, "due_to_null": True}) is False
+
+    def test_not_implicit_true_is_not_noisy(self):
+        assert is_noisy_span({"implicit_true": False, "due_to_null": False}) is False
+
+    def test_missing_keys_default_to_not_noisy(self):
+        assert is_noisy_span({}) is False
+
+
+class TestImplicitTrueFlagging:
+    def test_flag_length_matches_input_ids_and_is_false_off_response(self, tokenizer):
+        result = tokenize_and_align_labels(
+            CONTEXT, RESPONSE, [{"start": 9, "end": 19, "implicit_true": True}], tokenizer, max_length=128
+        )
+        assert len(result["is_implicit_true"]) == len(result["input_ids"])
+        sequence_ids = tokenizer(CONTEXT, RESPONSE, max_length=128, truncation="only_first").sequence_ids()
+        for flag, seq_id in zip(result["is_implicit_true"], sequence_ids):
+            if seq_id != 1:
+                assert flag is False  # context/special positions never flagged
+
+    def test_no_spans_means_no_flags(self, tokenizer):
+        assert response_flags_for([], tokenizer) == [False] * 7
+
+    def test_noisy_span_flags_its_tokens(self, tokenizer):
+        # ' yesterday in Paris' (9,28) flagged noisy -> its 3 tokens are hallucinated AND flagged.
+        spans = [{"start": 9, "end": 28, "implicit_true": True, "due_to_null": False}]
+        assert response_labels_for(spans, tokenizer) == [0, 0, 0, 1, 1, 1, 0]
+        assert response_flags_for(spans, tokenizer) == [False, False, False, True, True, True, False]
+
+    def test_due_to_null_span_is_labeled_but_not_flagged(self, tokenizer):
+        # implicit_true AND due_to_null: a genuine hallucination -> hallucinated label, NO flag.
+        spans = [{"start": 9, "end": 28, "implicit_true": True, "due_to_null": True}]
+        assert response_labels_for(spans, tokenizer) == [0, 0, 0, 1, 1, 1, 0]
+        assert response_flags_for(spans, tokenizer) == [False] * 7
+
+    def test_plain_hallucination_span_not_flagged(self, tokenizer):
+        spans = [{"start": 9, "end": 28, "implicit_true": False}]
+        assert response_labels_for(spans, tokenizer) == [0, 0, 0, 1, 1, 1, 0]
+        assert response_flags_for(spans, tokenizer) == [False] * 7
+
+    def test_merged_noisy_and_genuine_span_token_keeps_full_weight(self, tokenizer):
+        # Edge case: a noisy span (5,19) and a genuine span (15,22) overlap. normalize_spans
+        # would union them, but the flag is computed from RAW spans:
+        #   'ined'(5,9)       -> noisy only            -> flagged
+        #   'Ġyesterday'(9,19)-> noisy AND genuine     -> NOT flagged (genuine backing wins)
+        #   'Ġin'(19,22)      -> genuine only          -> not flagged
+        spans = [
+            {"start": 5, "end": 19, "implicit_true": True, "due_to_null": False},  # noisy
+            {"start": 15, "end": 22, "implicit_true": False},  # genuine
+        ]
+        assert response_labels_for(spans, tokenizer) == [0, 0, 1, 1, 1, 0, 0]
+        assert response_flags_for(spans, tokenizer) == [False, False, True, False, False, False, False]
 
 
 class TestNormalizeSpans:
