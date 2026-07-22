@@ -44,6 +44,20 @@ IGNORE_LABEL = -100
 LABEL_NAMES = {SUPPORTED_LABEL: "supported", HALLUCINATED_LABEL: "hallucinated", IGNORE_LABEL: "IGN"}
 
 
+def is_noisy_span(span: dict) -> bool:
+    """True for gold spans the RAGTruth annotators themselves flagged as contextually true.
+
+    `implicit_true=True` marks a span annotated as hallucinated that the annotator
+    acknowledged is actually true given the context (13.5% of all gold spans; 73.6% of
+    "Subtle Baseless Info"). `due_to_null=True` spans are excluded from the noisy set:
+    they are genuine hallucinations over null JSON fields (98% Evident Baseless Info in
+    Data2txt) and must keep full training weight. Used only to build the auxiliary
+    `is_implicit_true` column consumed by --implicit_true_weight at training time --
+    it never affects the binary labels themselves.
+    """
+    return bool(span.get("implicit_true", False)) and not bool(span.get("due_to_null", False))
+
+
 def normalize_spans(labels: list[dict]) -> list[tuple[int, int]]:
     """Sort gold spans and union any that overlap or touch, returning disjoint spans.
 
@@ -103,11 +117,21 @@ def tokenize_and_align_labels(
 
     gold_spans = normalize_spans(labels)
 
+    # ACWS auxiliary flag (never touches the labels): a token is is_implicit_true iff
+    # every raw gold span covering it is annotator-flagged noise (is_noisy_span). The
+    # noisy/clean regions come from the RAW spans, not the normalized union, because
+    # normalize_spans can merge a noisy span into a genuine one -- a token backed by ANY
+    # genuine annotation must keep full training weight.
+    noisy_regions = normalize_spans([span for span in labels if is_noisy_span(span)])
+    clean_regions = normalize_spans([span for span in labels if not is_noisy_span(span)])
+
     token_labels = []
+    token_implicit_flags = []
     for seq_id, (char_start, char_end) in zip(sequence_ids, offsets):
         if seq_id != 1:
             # Context tokens and special tokens ([CLS]/[SEP]) are always ignored.
             token_labels.append(IGNORE_LABEL)
+            token_implicit_flags.append(False)
             continue
         # A zero-width response-token offset would silently corrupt labels and the
         # trainer's span reconstruction; ModernBERT's BPE tokenizer never emits one.
@@ -115,11 +139,19 @@ def tokenize_and_align_labels(
         overlaps = any(char_start < span_end and char_end > span_start for span_start, span_end in gold_spans)
         token_labels.append(HALLUCINATED_LABEL if overlaps else SUPPORTED_LABEL)
 
+        overlaps_noisy = any(char_start < span_end and char_end > span_start for span_start, span_end in noisy_regions)
+        overlaps_clean = any(char_start < span_end and char_end > span_start for span_start, span_end in clean_regions)
+        flagged = overlaps_noisy and not overlaps_clean
+        assert not flagged or token_labels[-1] == HALLUCINATED_LABEL, "flag on a non-hallucinated token"
+        token_implicit_flags.append(flagged)
+
     assert len(token_labels) == len(input_ids)
+    assert len(token_implicit_flags) == len(input_ids)
     return {
         "input_ids": input_ids,
         "attention_mask": encoding["attention_mask"],
         "labels": token_labels,
+        "is_implicit_true": token_implicit_flags,
         "token_starts": [start for start, _ in offsets],
         "token_ends": [end for _, end in offsets],
         "gold_starts": [start for start, _ in gold_spans],
@@ -139,9 +171,13 @@ def build_token_level_dataset(merged_df: pd.DataFrame, tokenizer, max_length: in
     return pd.DataFrame(
         {
             "source_id": merged_df["source_id"],
+            # Raw response.jsonl `id`: a unique per-response key (source_id repeats 6x),
+            # enabling key-based join-backs to raw span metadata instead of positional-only.
+            "response_id": merged_df["id"].astype(str),
             "input_ids": encodings["input_ids"],
             "attention_mask": encodings["attention_mask"],
             "labels": encodings["labels"],
+            "is_implicit_true": encodings["is_implicit_true"],
             "token_starts": encodings["token_starts"],
             "token_ends": encodings["token_ends"],
             "gold_starts": encodings["gold_starts"],
@@ -204,7 +240,29 @@ def print_alignment_sample(
         )
 
 
-def main() -> None:
+def print_implicit_true_report(df: pd.DataFrame, split_name: str) -> None:
+    """Live sanity check of the is_implicit_true column against the audit numbers.
+
+    Expected (verified 2026-07-12 against response.jsonl): ~13.5% of gold-span char mass
+    is annotator-flagged implicit_true overall, and ~605 hallucinated responses across
+    the official train split (our train+val) consist ONLY of flagged spans.
+    """
+    n_pos = int(df["labels"].apply(lambda seq: sum(1 for v in seq if v == HALLUCINATED_LABEL)).sum())
+    n_flagged = int(df["is_implicit_true"].apply(lambda seq: sum(bool(v) for v in seq)).sum())
+
+    def all_flagged(row) -> bool:
+        pos = [flag for label, flag in zip(row["labels"], row["is_implicit_true"]) if label == HALLUCINATED_LABEL]
+        return len(pos) > 0 and all(pos)
+
+    n_all_flagged = int(df.apply(all_flagged, axis=1).sum())
+    share = n_flagged / n_pos if n_pos else 0.0
+    print(
+        f"[{split_name}] implicit_true: {n_flagged}/{n_pos} positive tokens flagged ({share:.2%}) | "
+        f"all-flagged hallucinated responses: {n_all_flagged}"
+    )
+
+
+def main(processed_dir: Path = PROCESSED_DIR) -> None:
     print(f"Loading tokenizer: {MODEL_NAME}")
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 
@@ -253,10 +311,14 @@ def main() -> None:
                 f"max_length={MAX_LENGTH} -- ADR-011 found this should never happen."
             )
 
-    PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+    print("\nimplicit_true flag diagnostics (auxiliary column, labels untouched):")
+    for name, df in [("train", train_df), ("val", val_df), ("test", test_df)]:
+        print_implicit_true_report(df, name)
+
+    processed_dir.mkdir(parents=True, exist_ok=True)
     saved = []
     for name, df in [("train", train_df), ("val", val_df), ("test", test_df)]:
-        path = PROCESSED_DIR / OUTPUT_TEMPLATE.format(split=name)
+        path = processed_dir / OUTPUT_TEMPLATE.format(split=name)
         df.drop(columns=["was_truncated"]).to_parquet(path, index=False)
         saved.append((path, len(df)))
 

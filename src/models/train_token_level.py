@@ -73,6 +73,9 @@ MODEL_NAME = "answerdotai/ModernBERT-base"
 ATTN_IMPLEMENTATION = "sdpa"
 METRICS_PATH = RESULTS_DIR / "finetuned_track_b_token_level_metrics.json"
 
+# --checkpoint_metric choice -> compute_metrics key (Trainer prefixes "eval_" itself).
+CHECKPOINT_METRICS = {"response_f1": "response_f1", "span_f1": "char_span_f1", "token_f1": "token_f1"}
+
 # The binary scheme comes from preprocess_token_level.py; only IGNORE_LABEL (-100) is
 # excluded -- it marks context/special tokens, not a class the model predicts.
 ID2LABEL = {label_id: name for label_id, name in LABEL_NAMES.items() if label_id != IGNORE_LABEL}
@@ -110,7 +113,40 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--warmup_ratio", type=float, default=0.1)
     parser.add_argument("--weight_decay", type=float, default=0.01)
     parser.add_argument(
-        "--early_stopping_patience", type=int, default=2, help="Epochs without val response-level F1 gain."
+        "--early_stopping_patience",
+        type=int,
+        default=2,
+        help="Epochs without improvement on --checkpoint_metric. Set >= num_train_epochs to disable "
+        "(fixed-epoch recipes like the LettuceDetect-parity ablation arms).",
+    )
+    parser.add_argument(
+        "--checkpoint_metric",
+        choices=sorted(CHECKPOINT_METRICS),
+        default="response_f1",
+        help="Val metric for best-checkpoint selection (and early stopping). response_f1 is the "
+        "historical Track B default (ADR-013); token_f1 matches LettuceDetect's documented recipe "
+        "(ablation arms b/c); span_f1 = char-overlap span F1.",
+    )
+    parser.add_argument(
+        "--implicit_true_weight",
+        type=float,
+        default=1.0,
+        help="ACWS: per-token loss weight for positions inside annotator-flagged implicit_true "
+        "spans (is_implicit_true column). 1.0 (default) = current behavior, identical loss code "
+        "path; 0.0 = exclude flagged tokens from the loss entirely. Training-time only -- labels "
+        "and metrics never change.",
+    )
+    parser.add_argument(
+        "--metrics_out",
+        default=None,
+        help=f"Metrics JSON path (default: {METRICS_PATH}). Ablation arms must set this to avoid "
+        "overwriting the published Track B report.",
+    )
+    parser.add_argument(
+        "--predictions_out",
+        default=None,
+        help="Per-example test predictions JSON for stratified evaluation "
+        "(default: results/token_preds_<output_dir basename>.json).",
     )
     parser.add_argument(
         "--class_weight_cap",
@@ -143,7 +179,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def load_token_split(path: str) -> tuple[datasets.Dataset, pd.DataFrame]:
+def load_token_split(path: str, with_implicit_mask: bool = False) -> tuple[datasets.Dataset, pd.DataFrame]:
     """Read a token-level parquet into a Dataset plus the raw df (offsets, gold spans, task_type).
 
     Unlike train.load_split, "labels" here is a per-token sequence (not a scalar), already
@@ -152,11 +188,27 @@ def load_token_split(path: str) -> tuple[datasets.Dataset, pd.DataFrame]:
     (with -100) dynamically per batch. token_starts/token_ends/gold_starts/gold_ends stay
     in the df only -- they feed span reconstruction and the char-overlap metric, never the
     model.
+
+    with_implicit_mask=True (ACWS training split only) additionally exposes the parquet's
+    is_implicit_true column to the Dataset as an int "implicit_true_mask" sequence, so the
+    collator can pad it and compute_loss can down-weight flagged tokens.
     """
     df = pd.read_parquet(path)
-    for column in ("input_ids", "attention_mask", "labels", "token_starts", "token_ends", "gold_starts", "gold_ends"):
+    columns = ["input_ids", "attention_mask", "labels", "token_starts", "token_ends", "gold_starts", "gold_ends"]
+    if "is_implicit_true" in df.columns:
+        columns.append("is_implicit_true")
+    for column in columns:
         df[column] = df[column].apply(lambda a: np.asarray(a).tolist())
-    ds = datasets.Dataset.from_pandas(df[["input_ids", "attention_mask", "labels"]], preserve_index=False)
+    ds_columns = ["input_ids", "attention_mask", "labels"]
+    if with_implicit_mask:
+        if "is_implicit_true" not in df.columns:
+            raise ValueError(
+                f"{path} has no is_implicit_true column -- regenerate it with "
+                "src/data/preprocess_token_level.py before using --implicit_true_weight != 1.0."
+            )
+        df["implicit_true_mask"] = df["is_implicit_true"].apply(lambda seq: [int(bool(v)) for v in seq])
+        ds_columns.append("implicit_true_mask")
+    ds = datasets.Dataset.from_pandas(df[ds_columns], preserve_index=False)
     return ds, df
 
 
@@ -331,6 +383,33 @@ def evaluate_split(labels: np.ndarray, predictions: np.ndarray, df: pd.DataFrame
     return metrics, resp_true, resp_pred
 
 
+def build_prediction_records(labels, predictions, df: pd.DataFrame) -> list[dict]:
+    """Per-example test predictions in the ablation dump format (scripts/ablation_report.py).
+
+    labels/predictions are per-row sequences (rows may have different lengths -- lists of
+    1-D arrays are fine, everything downstream zips row-wise). Spans are char-level;
+    gold_spans mirror the parquet's normalized gold so the report script can cross-check
+    them against raw metadata.
+    """
+    pred_spans, gold_char_spans, _ = split_spans(predictions, labels, df)
+    resp_true, resp_pred = derive_response_labels(labels, predictions)
+    records = []
+    for i in range(len(df)):
+        record = {
+            "row_index": i,
+            "source_id": int(df["source_id"].iloc[i]),
+            "task_type": str(df["task_type"].iloc[i]),
+            "pred_spans": [[int(start), int(end)] for start, end in pred_spans[i]],
+            "gold_spans": [[int(start), int(end)] for start, end in gold_char_spans[i]],
+            "resp_true": int(resp_true[i]),
+            "resp_pred": int(resp_pred[i]),
+        }
+        if "response_id" in df.columns:
+            record["response_id"] = str(df["response_id"].iloc[i])
+        records.append(record)
+    return records
+
+
 def build_token_test_report(
     args: argparse.Namespace,
     trainer: "WeightedTokenTrainer",
@@ -340,13 +419,15 @@ def build_token_test_report(
     val_df: pd.DataFrame,
     test_ds: datasets.Dataset,
     test_df: pd.DataFrame,
-) -> dict:
+    best_checkpoint: dict | None = None,
+) -> tuple[dict, np.ndarray, np.ndarray]:
     """Evaluate the best model on val and (for the first time) test; assemble the metrics dict.
 
     Same top-level shape as the response-level reports (model_name, hyperparameters, counts,
     val, test) but each split carries the char-overlap span metrics (headline), a derived
     response-level block comparable to the other three systems, and the strict exact-match
-    span block.
+    span block. Also returns the raw test (labels, predictions) so main() can dump
+    per-example records without a second inference pass.
     """
     val_labels, val_preds = _predict_token_labels(trainer, val_ds)
     test_labels, test_preds = _predict_token_labels(trainer, test_ds)
@@ -355,7 +436,7 @@ def build_token_test_report(
     test_metrics, test_resp_true, test_resp_pred = evaluate_split(test_labels, test_preds, test_df)
     baselines = trivial_baselines(test_resp_true, args.seed)
 
-    return {
+    report = {
         "model_name": args.model_name,
         "hyperparameters": {
             "learning_rate": args.learning_rate,
@@ -369,8 +450,12 @@ def build_token_test_report(
             "gradient_accumulation_steps": args.gradient_accumulation_steps,
             "gradient_checkpointing": args.gradient_checkpointing,
             "attn_implementation": ATTN_IMPLEMENTATION,
+            "checkpoint_metric": args.checkpoint_metric,
+            "implicit_true_weight": args.implicit_true_weight,
+            "early_stopping_patience": args.early_stopping_patience,
         },
         "counts": counts,
+        "best_checkpoint": best_checkpoint,
         "val": val_metrics,
         "test": {
             **test_metrics,
@@ -379,6 +464,60 @@ def build_token_test_report(
             "per_task_type": per_task_breakdown(test_df["task_type"].tolist(), test_resp_true, test_resp_pred),
         },
     }
+    return report, test_labels, test_preds
+
+
+class ImplicitMaskCollator(DataCollatorForTokenClassification):
+    """DataCollatorForTokenClassification that also pads implicit_true_mask (with 0).
+
+    The mask must be popped before super().torch_call -- tokenizer.pad would reject the
+    unknown key. Padding positions get 0, which is a no-op in the weighted loss because
+    their labels are already -100 (weight 0 regardless). When no feature carries the key
+    (eval splits, or implicit_true_weight == 1.0), behavior is byte-identical to the base
+    collator.
+    """
+
+    def torch_call(self, features):
+        has_mask = "implicit_true_mask" in features[0]
+        masks = [feature.pop("implicit_true_mask") for feature in features] if has_mask else None
+        batch = super().torch_call(features)
+        if masks is not None:
+            assert self.tokenizer.padding_side == "right", "implicit_true_mask padding assumes right padding"
+            seq_len = batch["input_ids"].shape[1]
+            padded = [list(mask) + [0] * (seq_len - len(mask)) for mask in masks]
+            batch["implicit_true_mask"] = torch.tensor(padded, dtype=torch.long)
+        return batch
+
+
+def weighted_token_ce(
+    logits: torch.Tensor,
+    labels: torch.Tensor,
+    implicit_mask: torch.Tensor,
+    implicit_true_weight: float,
+    class_weights: torch.Tensor | None = None,
+) -> torch.Tensor:
+    """ACWS objective: L = sum_t(w_t * l_t) / clamp(sum_t(w_t), 1e-8).
+
+    l_t is the usual per-token CE (0 at ignore positions via ignore_index + reduction
+    "none"); w_t = 0 where the label is -100, implicit_true_weight where the token is
+    annotator-flagged (implicit_mask), 1 elsewhere. Properties (unit-tested):
+    - implicit_true_weight == 1.0 reduces to the plain mean CE over valid tokens
+      (main() never routes here in that case -- the legacy path stays bit-identical);
+    - implicit_true_weight == 0.0 is exactly loss-masking flagged tokens (they leave
+      numerator AND denominator);
+    - flagged tokens are ~0.7-0.8% of supervised tokens, so the denominator shift is
+      <1%: effectively per-token gradient scaling.
+    Note: with class_weights set, the denominator uses only w_t (not PyTorch's
+    class-weighted-mean convention); irrelevant for the ablation arms (plain CE).
+    """
+    per_token = nn.CrossEntropyLoss(weight=class_weights, ignore_index=IGNORE_LABEL, reduction="none")(
+        logits.view(-1, NUM_LABELS), labels.view(-1)
+    )
+    flat_labels = labels.view(-1)
+    weights = torch.ones_like(per_token)
+    weights = torch.where(implicit_mask.view(-1).bool(), weights * implicit_true_weight, weights)
+    weights = torch.where(flat_labels == IGNORE_LABEL, torch.zeros_like(weights), weights)
+    return (per_token * weights).sum() / weights.sum().clamp(min=1e-8)
 
 
 class WeightedTokenTrainer(WeightedTrainer):
@@ -386,19 +525,55 @@ class WeightedTokenTrainer(WeightedTrainer):
 
     With class_weights=None (the ADR-013 default) this is plain cross-entropy, exactly
     matching LettuceDetect's recipe; --class_weight_cap re-enables (clamped) weighting.
+    When the batch carries implicit_true_mask (ACWS: --implicit_true_weight != 1.0, train
+    split only), flagged tokens' loss is scaled by implicit_true_weight instead.
     """
+
+    def __init__(self, *args, implicit_true_weight: float = 1.0, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.implicit_true_weight = implicit_true_weight
 
     def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
         labels = inputs.pop("labels")
+        implicit_mask = inputs.pop("implicit_true_mask", None)
         outputs = model(**inputs)
         logits = outputs.logits
         weight = None if self.class_weights is None else self.class_weights.to(logits.device)
-        # ignore_index is CrossEntropyLoss's default, stated explicitly: -100 marks
-        # context/special/padding tokens that must never contribute to the loss.
-        loss = nn.CrossEntropyLoss(weight=weight, ignore_index=IGNORE_LABEL)(
-            logits.view(-1, NUM_LABELS), labels.view(-1)
-        )
+        if implicit_mask is None:
+            # ignore_index is CrossEntropyLoss's default, stated explicitly: -100 marks
+            # context/special/padding tokens that must never contribute to the loss.
+            loss = nn.CrossEntropyLoss(weight=weight, ignore_index=IGNORE_LABEL)(
+                logits.view(-1, NUM_LABELS), labels.view(-1)
+            )
+        else:
+            loss = weighted_token_ce(logits, labels, implicit_mask, self.implicit_true_weight, weight)
         return (loss, outputs) if return_outputs else loss
+
+
+def find_best_checkpoint(trainer: "WeightedTokenTrainer", metric_name: str) -> dict | None:
+    """Recover the epoch/step that produced the best checkpoint (Trainer records only the value).
+
+    trainer.state.best_metric holds the winning eval_<metric_name> value but not which epoch
+    it came from. Scan log_history for the eval entry whose eval_<metric_name> matches (exact,
+    since Trainer copies the logged float verbatim; falls back to the closest match if float
+    round-tripping ever perturbs it). Returns None when no checkpoint was selected (e.g. a
+    zero-epoch smoke run).
+    """
+    best = trainer.state.best_metric
+    if best is None:
+        return None
+    key = f"eval_{metric_name}"
+    evals = [entry for entry in trainer.state.log_history if key in entry]
+    if not evals:
+        return None
+    exact = [entry for entry in evals if entry[key] == best]
+    match = exact[-1] if exact else min(evals, key=lambda e: abs(e[key] - best))
+    return {
+        "metric": metric_name,
+        "value": float(best),
+        "epoch": match.get("epoch"),
+        "step": match.get("step"),
+    }
 
 
 def main() -> None:
@@ -406,7 +581,11 @@ def main() -> None:
     set_seed(args.seed)
     RESULTS_DIR.mkdir(exist_ok=True)
 
-    train_ds, train_df = load_token_split(args.train_path)
+    # ACWS down-weighting needs the flagged-token mask on the TRAIN split only; when the
+    # weight is 1.0 (arms a/b) we never load it, keeping the loss path bit-identical to the
+    # published Track B run.
+    use_implicit_weighting = args.implicit_true_weight != 1.0
+    train_ds, train_df = load_token_split(args.train_path, with_implicit_mask=use_implicit_weighting)
     val_ds, val_df = load_token_split(args.val_path)
     test_ds, test_df = load_token_split(args.test_path)
 
@@ -450,7 +629,10 @@ def main() -> None:
     )
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_name)
-    collator = DataCollatorForTokenClassification(tokenizer=tokenizer)
+    # ImplicitMaskCollator is a drop-in for DataCollatorForTokenClassification: it only does
+    # extra work when a feature carries implicit_true_mask (train split under ACWS), and is
+    # byte-identical to the base collator otherwise.
+    collator = ImplicitMaskCollator(tokenizer=tokenizer)
     model = AutoModelForTokenClassification.from_pretrained(
         args.model_name,
         num_labels=NUM_LABELS,
@@ -474,9 +656,11 @@ def main() -> None:
         eval_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
-        # ADR-013: select on the derived response-level F1 -- stable from epoch 1, unlike
-        # the near-zero exact-match span F1 that drove the BIO run's selection.
-        metric_for_best_model="response_f1",
+        # ADR-013 default: select on the derived response-level F1 -- stable from epoch 1,
+        # unlike the near-zero exact-match span F1 that drove the BIO run's selection. The
+        # ablation arms (b/c) switch to token_f1 via --checkpoint_metric to match
+        # LettuceDetect's documented recipe. Trainer prefixes eval_ itself.
+        metric_for_best_model=f"eval_{CHECKPOINT_METRICS[args.checkpoint_metric]}",
         greater_is_better=True,
         save_total_limit=1,
         seed=args.seed,
@@ -498,19 +682,44 @@ def main() -> None:
         # For 2 classes argmax is exactly LettuceDetect's p >= 0.5 threshold.
         preprocess_logits_for_metrics=lambda logits, labels: logits.argmax(dim=-1),
         class_weights=class_weights,
+        implicit_true_weight=args.implicit_true_weight,
         callbacks=[EarlyStoppingCallback(early_stopping_patience=args.early_stopping_patience)],
     )
 
     trainer.train()
 
+    best_checkpoint = find_best_checkpoint(trainer, CHECKPOINT_METRICS[args.checkpoint_metric])
+    if best_checkpoint is not None:
+        print(
+            f"best checkpoint: epoch {best_checkpoint['epoch']} "
+            f"({best_checkpoint['metric']}={best_checkpoint['value']:.4f})",
+            flush=True,
+        )
+
     # First and only touch of the test split.
-    report = build_token_test_report(args, trainer, class_weights, counts, val_ds, val_df, test_ds, test_df)
+    report, test_labels, test_preds = build_token_test_report(
+        args, trainer, class_weights, counts, val_ds, val_df, test_ds, test_df, best_checkpoint=best_checkpoint
+    )
+
+    metrics_path = Path(args.metrics_out) if args.metrics_out else METRICS_PATH
+    run_name = os.path.basename(os.path.normpath(args.output_dir))
+    predictions_path = (
+        Path(args.predictions_out) if args.predictions_out else RESULTS_DIR / f"token_preds_{run_name}.json"
+    )
 
     trainer.save_model(args.output_dir)
     tokenizer.save_pretrained(args.output_dir)
-    METRICS_PATH.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    metrics_path.parent.mkdir(parents=True, exist_ok=True)
+    metrics_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
 
-    print("\n=== TEST results (best checkpoint by val response-level F1) ===", flush=True)
+    # Persist per-example test predictions (spans, response labels) for stratified analysis
+    # in scripts/ablation_report.py -- reuses the labels/preds already produced above, no
+    # second inference pass.
+    predictions_path.parent.mkdir(parents=True, exist_ok=True)
+    predictions = build_prediction_records(test_labels, test_preds, test_df)
+    predictions_path.write_text(json.dumps(predictions, indent=2), encoding="utf-8")
+
+    print(f"\n=== TEST results (best checkpoint by val {args.checkpoint_metric}) ===", flush=True)
     print(f"  span (char-overlap)         : {report['test']['span_char_level']}", flush=True)
     print(f"  response-level (derived)    : {report['test']['response_level_derived']}", flush=True)
     print(f"  span (exact match, strict)  : {report['test']['span_exact_match']}", flush=True)
@@ -519,7 +728,10 @@ def main() -> None:
     print("  per task_type (response-level derived):", flush=True)
     for task_type, task_metrics in report["test"]["per_task_type"].items():
         print(f"    {task_type:8s}: {task_metrics}", flush=True)
-    print(f"\nSaved: {METRICS_PATH} | model + tokenizer -> {args.output_dir}", flush=True)
+    print(
+        f"\nSaved: {metrics_path} | predictions -> {predictions_path} | model + tokenizer -> {args.output_dir}",
+        flush=True,
+    )
 
     maybe_push_to_hub(trainer, tokenizer, args)
 

@@ -4,7 +4,7 @@ A hallucination detector for RAG systems, trained and evaluated on RAGTruth. Fou
 systems are compared on identical footing: a zero-shot NLI baseline, a fine-tuned
 DeBERTa-v3-base response-level classifier (Track A), a fine-tuned ModernBERT-base
 response-level classifier (Approach 1), and a fine-tuned ModernBERT-base token-level
-binary classifier (Track B). **Track B is the best-performing system (F1 0.7619,
+binary classifier (Track B). **Track B is the best-performing system (F1 0.7631,
 matching LettuceDetect-base) and the one deployed in the live demo** — unlike the
 other three, it detects hallucinations at the character-span level, not just a single
 per-response score.
@@ -85,7 +85,7 @@ n = 2,700 responses (943 hallucinated, 1,757 faithful).
 | NLI zero-shot (DeBERTa-v3-base, MoritzLaurer checkpoint) | 0.3547 | 0.9979 | 0.5234 | 0.3652 |
 | Fine-tuned DeBERTa-v3-base (Track A) | 0.7367 | 0.6882 | 0.7116 | 0.8052 |
 | Fine-tuned ModernBERT-base (Approach 1) | 0.6832 | 0.7731 | 0.7254 | 0.7956 |
-| **Fine-tuned ModernBERT, binary token classification (Track B)** | **0.7873** | **0.7381** | **0.7619** | **0.8389** |
+| **Fine-tuned ModernBERT, binary token classification (Track B)** | **0.8359** | **0.7020** | **0.7631** | **0.8478** |
 
 **Track B is the best-performing system**, and it matches LettuceDetect-base's
 published example-level F1 of 76.07% on the same benchmark
@@ -106,6 +106,11 @@ untuned 0.5 default), but this ensemble did. See
 for the full analysis. **The ensemble is not used in the live demo** — running three
 models per prediction instead of one is a complexity/latency tradeoff not judged
 worthwhile here (see ADR-017's Status note); the demo runs Track B alone.
+
+> **TODO:** this ensemble analysis (F1 0.7701) was measured against arm-a's Track B
+> predictions and has not been re-run against arm-b; treated as a known, visible gap
+> pending full re-analysis after the upcoming ModernBERT-large experiment (see
+> [ADR-020](docs/decisions.md)), not a silent inconsistency.
 
 Fine-tuned models: [hugoomezz/deberta-v3-ragtruth-hallucination](https://huggingface.co/hugoomezz/deberta-v3-ragtruth-hallucination)
 (Track A), [hugoomezz/modernbert-ragtruth-response-level](https://huggingface.co/hugoomezz/modernbert-ragtruth-response-level)
@@ -190,24 +195,29 @@ published **55.44%**, and a response-level F1 of 76.11% vs. their published
 best system (Track B) row by row — confusion matrix, error categorization against the
 raw test-set text, qualitative examples, and threshold sensitivity. Five takeaways:
 
-1. **The headline F1 (0.762) is an average over very different tasks.** Data2txt is
-   close to solved (F1 0.869), while Summary is the weak spot (F1 0.513, recall
-   0.436) — the model misses more than half of all hallucinated summaries. Any claim
+1. **The headline F1 (0.763) is an average over very different tasks.** Data2txt is
+   close to solved (F1 0.868), while Summary is the weak spot (F1 0.490, recall
+   0.377) — the model misses more than half of all hallucinated summaries. Any claim
    about this detector needs a task-type qualifier.
-2. **The model is overconfident, not paranoid.** It misses 26.2% of hallucinated
-   responses but false-alarms on only 10.7% of faithful ones (247 FN vs 188 FP). The
-   token-level decision rule — flag only if some token crosses P(hallucinated) ≥ 0.5 —
-   structurally favors silence over alarm: diffuse suspicion never triggers.
+2. **The model is overconfident, not paranoid — and arm-b's recipe fix widened that
+   skew.** It misses 29.8% of hallucinated responses but false-alarms on only 7.4% of
+   faithful ones (281 FN vs 130 FP; the prior arm-a weights were 247 FN vs 188 FP) —
+   the span-F1 checkpoint selection traded some recall for precision, so the model
+   under-flags more than before, not less. The token-level decision rule — flag only
+   if some token crosses P(hallucinated) ≥ 0.5 — structurally favors silence over
+   alarm: diffuse suspicion never triggers.
 3. **Context length is a task-mix confound, not a real driver — and truncation is
    ruled out.** The apparent FN-rate swing across context-length quartiles
    (16.5%–46.8%) disappears within a task (each quartile is dominated by a different
    task type); the longest model-visible sequence is 2,388 tokens against the
-   4,096-token window, so no test row was truncated.
-4. **Subtle hallucinations from the strongest generators are the hardest case.**
-   Responses annotated only with "Subtle" span types are missed 40.3% of the time (vs
-   27.0% for evident-only), and detection F1 drops to ≈0.48–0.52 on GPT-3.5/GPT-4
-   outputs, where hallucinations are rare and subtle — exactly the deployment
-   scenario that matters most.
+   4,096-token window, so no test row was truncated. *(Figures from arm-a; not
+   re-measured for arm-b — see note below.)*
+4. **Subtle hallucinations from the strongest generators are the hardest case — and
+   got harder to catch under arm-b.** Responses annotated only with "Subtle" span
+   types are missed 48.1% of the time (vs 30.6% for evident-only), up from 40.3%/27.0%
+   under the prior arm-a weights — the same precision/recall tradeoff as point 2,
+   concentrated on the hardest cases. Detection F1 on GPT-3.5/GPT-4 outputs
+   specifically (≈0.48–0.52) has not yet been re-measured for arm-b.
 5. **The decision threshold is a product decision, and one model serves both modes.**
    F1 is nearly flat across thresholds 0.2–0.7, so the same checkpoint supports a
    high-precision **block mode** (t = 0.9: precision 0.879, recall 0.602 — ~1 in 8
@@ -218,6 +228,11 @@ raw test-set text, qualitative examples, and threshold sensitivity. Five takeawa
 
 Two illustrative cases from the notebook (gold-annotated hallucinated spans marked
 `**[[...]]**`; the notebook has five, with full contexts):
+
+> **TODO:** these qualitative examples (and the live-demo transcripts and paraphrase
+> false positive further below) were generated against arm-a's weights and have not
+> been re-run against arm-b; treated as a known, visible gap pending full re-analysis
+> after the upcoming ModernBERT-large experiment, not a silent inconsistency.
 
 **Caught — true positive at y_score 1.00** (QA, llama-2-70b-chat, gold: Evident +
 Subtle Baseless Info). Asked *"how to plan a trip to germany"* over passages about
@@ -255,19 +270,24 @@ gets caught; smooth, plausible-sounding embellishment of real facts slips throug
 Skimmable version of what's covered in more depth in [Error analysis](#error-analysis):
 
 - **Aggregate F1 hides a large task-type spread.** Data2txt is near-solved (F1
-  0.869); Summary is the weak spot (F1 0.513, recall 0.436) — any headline number
+  0.868); Summary is the weak spot (F1 0.490, recall 0.377) — any headline number
   needs a task-type qualifier.
-- **The detector is overconfident, not paranoid.** It misses 26.2% of hallucinated
-  responses but only false-alarms on 10.7% of faithful ones; the per-token decision
-  rule structurally favors silence over alarm.
+- **The detector is overconfident, not paranoid — more so under arm-b.** It misses
+  29.8% of hallucinated responses but only false-alarms on 7.4% of faithful ones (281
+  FN vs 130 FP; arm-a was 247 FN vs 188 FP) — the per-token decision rule structurally
+  favors silence over alarm, and arm-b's precision-favoring recipe fix widened that
+  gap rather than closing it.
 - **Context length looked like a driver but isn't.** The apparent swing across
   context-length quartiles is a task-mix confound, and no test row is actually
   truncated on the ModernBERT backbone (Track B); see
   [ADR-010](docs/decisions.md#adr-010-empirical-truncation-impact-on-track-a-is-precision-driven-not-recall-driven)
-  for the related truncation analysis on Track A.
-- **Subtle hallucinations from strong generators are the hardest case.**
-  "Subtle"-only spans are missed 40.3% of the time, and F1 drops to ≈0.48–0.52 on
-  GPT-3.5/GPT-4 outputs — the deployment scenario that matters most.
+  for the related truncation analysis on Track A. *(Quartile figures are from arm-a;
+  not yet re-measured for arm-b.)*
+- **Subtle hallucinations from strong generators are the hardest case — and arm-b
+  misses more of them.** "Subtle"-only spans are missed 48.1% of the time (vs 40.3%
+  under arm-a); evident-only spans are missed 30.6% of the time (vs 27.0%). The
+  GPT-3.5/GPT-4-specific F1 drop (≈0.48–0.52 under arm-a) has not yet been
+  re-measured for arm-b.
 - **The decision threshold is a tunable tradeoff, not a fix.** Even at the most
   aggressive (highest-recall) setting, ~16% of hallucinations still slip through —
   a risk reducer, not a guarantee.

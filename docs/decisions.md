@@ -585,3 +585,70 @@ toolchain in this repo); it is scoped the same way app/app.py's Gradio
 callbacks were — logic worth testing is tested in Python, and the integration
 risk that matters (mount ordering, endpoint contracts) is covered in
 tests/test_api.py.
+
+
+---
+
+## ADR-020: ACWS ablation results — recipe fix (arm b) adopted, noise down-weighting (arm c) rejected
+
+**Context:** Following the research report's Candidate 1 hypothesis (Annotation-
+Confidence-Weighted Supervision), a controlled 3-arm ablation was run on Track B:
+(a) our existing production model; (b) a faithful LettuceDetect-recipe replication
+(lr=1e-5, effective batch 8, 6 epochs, checkpoint selection on span-level F1
+instead of response-level F1, no implicit_true weighting); (c) identical to (b)
+plus implicit_true_weight=0.25 (down-weighting training loss on RAGTruth's own
+annotator-flagged "implicit_true" spans, per this project's original finding that
+13.5% of gold hallucination-span character mass is annotator-acknowledged noise).
+
+**Findings:**
+- Gate 4 (evaluation pipeline reproduction of the published model) passed exactly
+  (span-F1 0.5114 vs. published 0.5113; response-F1 0.7619 vs. 0.7619), validating
+  the new stratified-evaluation infrastructure before trusting arms b/c.
+- Arm (b) — the recipe fix ALONE, no ACWS — substantially outperformed the
+  current production model (arm a): span-F1 0.5321 (+2.1 points), response
+  precision 0.8359 vs 0.7873, false-positive rate on faithful responses 7.4% vs
+  10.7%. This confirms the code audit's hypothesis that checkpoint selection on
+  response-level F1 (structurally unable to distinguish tight spans from sloppy
+  ones) was suppressing our span-level performance relative to LettuceDetect-base
+  (0.5544 published), not an architectural or data limitation.
+- Arm (c) — ACWS at lambda=0.25 — did NOT pass the pre-registered decision rule.
+  Clean-span F1 was slightly WORSE than arm (b) (0.5262 vs 0.5307), response-F1
+  only marginally better (0.7633 vs 0.7631). The hypothesis that down-weighting
+  annotator-flagged noisy positives would measurably improve detection of
+  genuinely-clean hallucinations was not supported at this weight value.
+
+**Decision:**
+- ADOPT arm (b)'s recipe (span-F1 checkpoint selection, LettuceDetect's exact
+  hyperparameters) as the new Track B production model, replacing the current
+  Hub model. This is a genuine, measured improvement via honest recipe
+  correction, independent of the ACWS hypothesis.
+- REJECT ACWS at lambda=0.25 as tested. Document this as a legitimate null
+  result: the hypothesis was well-motivated (13.5% of gold span character mass
+  is annotator-acknowledged noise, unexploited by any published RAGTruth
+  system), pre-registered before testing, and cleanly falsified at this
+  setting -- consistent with literature showing pretrained transformers can be
+  surprisingly robust to moderate, even structured, label noise.
+- Do not pursue further lambda sweeps (0, 0.5) for this specific mechanism --
+  the result wasn't even directionally encouraging, and further tuning risk
+  outweighs the modest research report note that additional Kaggle sessions
+  cost more than they're likely to recover here.
+
+**Status:** Complete. Arm (b) pending deployment (Hub push, README/model-card
+update, live demo swap). ACWS (simple down-weighting) closed as a tested,
+documented negative result -- see ADR-021 for a follow-up direction informed
+by this finding.
+
+**Addendum (post-deployment reconciliation):** A light reconciliation of
+arm-b's exact per-row predictions found a trade-off not visible in the
+aggregate metrics: while arm-b improves overall precision (false-positive
+rate on faithful responses: 7.4% vs. arm-a's 10.7%) and span-F1, its
+recall trade-off is NOT uniform -- it disproportionately worsens detection
+of the hardest cases specifically. Subtle-hallucination miss rate rose
+from 40.3% (arm-a) to 48.1% (arm-b); Evident-hallucination miss rate rose
+from 27.0% to 30.6%. The FP:FN ratio shifted from 0.76 to 0.46 (more
+under-flagging, less over-flagging). Since Subtle hallucinations from
+strong generators are the deployment scenario this project's own analysis
+identifies as mattering most, arm-b's adoption is a genuine precision/
+recall trade-off, not a strict improvement -- documented here rather than
+only in the aggregate F1 gain, so the decision is auditable on its own
+terms.

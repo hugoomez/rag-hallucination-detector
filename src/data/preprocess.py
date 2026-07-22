@@ -36,7 +36,11 @@ def normalize_context(row: pd.Series) -> str:
             raise ValueError(f"source_id={source_id}: malformed QA source_info ({e!r}): {source_info!r}") from e
     elif task_type == "Data2txt":
         try:
-            return json.dumps(source_info, ensure_ascii=False)
+            # indent=2 is load-bearing: the published Track B/Approach-1 parquets and Hub
+            # models were built with pretty-printed Data2txt context. A Jul-2026 merge
+            # (07f3bcb) dropped it, silently changing the tokenization of every Data2txt
+            # row; restored here so the committed pipeline reproduces the published parquets.
+            return json.dumps(source_info, indent=2, ensure_ascii=False)
         except TypeError as e:
             raise ValueError(f"source_id={source_id}: malformed Data2txt source_info ({e!r}): {source_info!r}") from e
     else:
