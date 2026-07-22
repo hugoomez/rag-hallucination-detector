@@ -21,12 +21,14 @@ Fine-tuned `answerdotai/ModernBERT-base`, binary **token**-classification model 
 every response token supported (0) or hallucinated (1), so it recovers character-level
 spans, not just a single per-response score.
 
-**This is the best-performing system in this project (F1 0.7619 at the response level)
+**This is the best-performing system in this project (F1 0.7631 at the response level)
 and the model deployed in the live demo** (`src/models/predict.py`), superseding both
 Track A (`hugoomezz/deberta-v3-ragtruth-hallucination`) and Approach 1
 (`hugoomezz/modernbert-ragtruth-response-level`). Its recipe matches
 [LettuceDetect](https://arxiv.org/abs/2502.17125)'s approach: binary token labels,
-unweighted loss, and character-overlap span evaluation.
+unweighted loss, and character-overlap span evaluation, with checkpoint selection on
+span-level F1 rather than response-level F1 (see [ADR-020](https://github.com/hugoomez/rag-hallucination-detector/blob/main/docs/decisions.md)
+below).
 
 ## Intended use
 
@@ -58,25 +60,22 @@ evaluation, matching the deployed model and the README's comparison table:
 
 | Metric | Value |
 |---|---|
-| Precision | 0.7873 |
-| Recall | 0.7381 |
-| F1 | 0.7619 |
-| Accuracy | 0.8389 |
+| Precision | 0.8359 |
+| Recall | 0.7020 |
+| F1 | 0.7631 |
+| Accuracy | 0.8478 |
 
 This matches [LettuceDetect-base](https://arxiv.org/abs/2502.17125)'s published
-example-level F1 of 76.07% (76.11% under this project's own original training-run
-evaluation, `results/finetuned_track_b_token_level_metrics.json` — within 0.04 points
-of published; the 0.7619 above is a later unified-evaluation re-measurement, ordinary
-GPU inference nondeterminism accounts for the small difference).
+example-level F1 of 76.07%, from `results/finetuned_track_b_token_level_metrics.json`.
 
 Span-level (character-overlap, LettuceDetect's headline metric; from
 `results/finetuned_track_b_token_level_metrics.json`):
 
 | Metric | Value |
 |---|---|
-| Precision | 0.6057 |
-| Recall | 0.4424 |
-| F1 | **0.5113** |
+| Precision | 0.6474 |
+| Recall | 0.4517 |
+| F1 | **0.5321** |
 
 vs. LettuceDetect-base's published span-level F1 of 55.44%.
 
@@ -84,29 +83,53 @@ Per task_type (response-level derived):
 
 | Task | F1 | Recall |
 |---|---|---|
-| Data2txt | 0.8689 | 0.8584 |
-| QA | 0.6548 | 0.6875 |
-| Summary | 0.5100 | 0.4363 |
+| Data2txt | 0.8675 | 0.8256 |
+| QA | 0.6708 | 0.6688 |
+| Summary | 0.4904 | 0.3775 |
+
+**Recipe correction ([ADR-020](https://github.com/hugoomez/rag-hallucination-detector/blob/main/docs/decisions.md#adr-020-acws-ablation-results--recipe-fix-arm-b-adopted-noise-down-weighting-arm-c-rejected)):**
+these are the weights from a controlled ablation's arm (b) — a faithful
+LettuceDetect-recipe replication (lr=1e-5, effective batch 8, 6 epochs, checkpoint
+selection on **span-level F1** instead of response-level F1). The prior deployed
+weights (arm a) selected the checkpoint on response-level F1, which is structurally
+unable to distinguish tight spans from sloppy ones and was suppressing span-level
+performance; switching the selection metric alone (no architecture or data change)
+raised span-F1 from 0.5113 to 0.5321 (+2.1 points) and response precision from 0.7873
+to 0.8359, at the cost of some recall (0.7381 → 0.7020). A companion arm testing
+Annotation-Confidence-Weighted Supervision (down-weighting the training loss on
+annotator-flagged "implicit_true" spans) did not clear its pre-registered bar and was
+rejected as a tested negative result — see the ADR for both arms' full numbers.
 
 ## Limitations
 
-- **Summary remains the weakest task** (F1 0.51, recall 0.436 — misses more than half
-  of hallucinated summaries), though improved over Track A/Approach 1.
-- **Overconfident, not paranoid**: misses 26.2% of hallucinated responses but
-  false-alarms on only 10.7% of faithful ones (247 FN vs 188 FP in this project's error
-  analysis) — the token-level decision rule (flag if any token crosses P≥0.5)
-  structurally favors silence over alarm.
-- **"Subtle" hallucinations are the hardest case**: responses annotated only with
-  "Subtle" span types are missed 40.3% of the time (vs 27.0% for evident-only), and
-  detection F1 drops to ≈0.48–0.52 on GPT-3.5/GPT-4 outputs specifically — the
-  deployment scenario (strong generators, subtle errors) where detection matters most.
-- **Known false positive on close paraphrase**: during live demo testing, the model
-  flagged a factually *correct* grounded answer that paraphrased the source ("second of
-  six children, five siblings") as unsupported at score 0.99 — plausibly triggered by
-  surface-form sensitivity rather than a genuine factual disagreement. Noted as a known
-  limitation, not further investigated (`docs/notes.md`, Phase 5 section). This is the
-  inverse of the "overconfident" pattern above: mostly the model under-flags, but this
-  shows it can occasionally over-flag on close paraphrases.
+- **Summary remains the weakest task** (F1 0.490, recall 0.377 — misses more than half
+  of hallucinated summaries), though improved precision over Track A/Approach 1.
+- **Overconfident, not paranoid — more so than the prior arm-a weights**: misses 29.8%
+  of hallucinated responses but false-alarms on only 7.4% of faithful ones (281 FN vs
+  130 FP in this project's error analysis, up from 247 FN vs 188 FP under arm-a) — the
+  token-level decision rule (flag if any token crosses P≥0.5) structurally favors
+  silence over alarm, and the span-F1 checkpoint selection recipe (ADR-020) traded
+  recall for precision, widening this skew rather than closing it.
+- **"Subtle" hallucinations are the hardest case, and arm-b misses more of them**:
+  responses annotated only with "Subtle" span types are missed 48.1% of the time (vs
+  40.3% under arm-a), and evident-only spans are missed 30.6% of the time (vs 27.0%) —
+  the same precision/recall tradeoff concentrated on the deployment scenario (strong
+  generators, subtle errors) where detection matters most. The GPT-3.5/GPT-4-specific
+  F1 drop (≈0.48–0.52 under arm-a) has not yet been re-measured for arm-b.
+- **Known false positive on close paraphrase**: during live demo testing (against the
+  prior arm-a weights; not yet re-tested on arm-b), the model flagged a factually
+  *correct* grounded answer that paraphrased the source ("second of six children, five
+  siblings") as unsupported at score 0.99 — plausibly triggered by surface-form
+  sensitivity rather than a genuine factual disagreement. Noted as a known limitation,
+  not further investigated (`docs/notes.md`, Phase 5 section). This is the inverse of
+  the "overconfident" pattern above: mostly the model under-flags, but this shows it
+  can occasionally over-flag on close paraphrases.
+- **TODO (visible, not silent):** this project's README contains qualitative examples
+  (error-analysis case studies, live-demo transcripts) and an ADR-017 ensemble analysis
+  (F1 0.7701) that still reference arm-a's predictions/weights, not arm-b's. Full
+  re-analysis is deferred until after the upcoming ModernBERT-large experiment
+  concludes, to avoid redoing this work twice if that experiment supersedes Track B
+  again.
 - **The decision threshold is a product tradeoff, not a fixed answer**: F1 is nearly
   flat across thresholds 0.2–0.7, so the same checkpoint can be run as a high-precision
   "block" mode (t=0.9: precision 0.879, recall 0.602) or a high-recall "warn" mode
