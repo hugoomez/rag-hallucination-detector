@@ -637,3 +637,18 @@ annotator-flagged "implicit_true" spans, per this project's original finding tha
 update, live demo swap). ACWS (simple down-weighting) closed as a tested,
 documented negative result -- see ADR-021 for a follow-up direction informed
 by this finding.
+
+**Addendum (post-deployment reconciliation):** A light reconciliation of
+arm-b's exact per-row predictions found a trade-off not visible in the
+aggregate metrics: while arm-b improves overall precision (false-positive
+rate on faithful responses: 7.4% vs. arm-a's 10.7%) and span-F1, its
+recall trade-off is NOT uniform -- it disproportionately worsens detection
+of the hardest cases specifically. Subtle-hallucination miss rate rose
+from 40.3% (arm-a) to 48.1% (arm-b); Evident-hallucination miss rate rose
+from 27.0% to 30.6%. The FP:FN ratio shifted from 0.76 to 0.46 (more
+under-flagging, less over-flagging). Since Subtle hallucinations from
+strong generators are the deployment scenario this project's own analysis
+identifies as mattering most, arm-b's adoption is a genuine precision/
+recall trade-off, not a strict improvement -- documented here rather than
+only in the aggregate F1 gain, so the decision is auditable on its own
+terms.
