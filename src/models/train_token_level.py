@@ -83,7 +83,7 @@ LABEL2ID = {name: label_id for label_id, name in ID2LABEL.items()}
 NUM_LABELS = len(ID2LABEL)
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Expose all hyperparameters, paths, and flags so runs are reproducible and rerunnable."""
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--train_path", default="data/processed/token_level_binary_train.parquet")
@@ -112,6 +112,13 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--warmup_ratio", type=float, default=0.1)
     parser.add_argument("--weight_decay", type=float, default=0.01)
+    parser.add_argument(
+        "--max_grad_norm",
+        type=float,
+        default=1.0,
+        help="Gradient-clipping max norm. 1.0 (default) == the HF Trainer default, so leaving it "
+        "unset is a no-op; lower it (e.g. 0.5) as an fp16-stability fallback for ModernBERT-large.",
+    )
     parser.add_argument(
         "--early_stopping_patience",
         type=int,
@@ -176,7 +183,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--max_eval_samples", type=int, default=None, help="Cap val rows for a quick smoke test (default: all)."
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--logging_steps",
+        type=int,
+        default=None,
+        help="If set, log every N optimizer steps (logging_strategy='steps'); default (None) keeps "
+        "the historical per-epoch logging. Use a small value (e.g. 10) so a smoke test surfaces "
+        "NaN/inf loss within a few steps instead of once per epoch.",
+    )
+    return parser.parse_args(argv)
 
 
 def load_token_split(path: str, with_implicit_mask: bool = False) -> tuple[datasets.Dataset, pd.DataFrame]:
@@ -576,6 +591,52 @@ def find_best_checkpoint(trainer: "WeightedTokenTrainer", metric_name: str) -> d
     }
 
 
+def build_training_args(args: argparse.Namespace) -> TrainingArguments:
+    """Assemble TrainingArguments from parsed CLI args.
+
+    Extracted from main() so the argument wiring is unit-testable without loading a model
+    or data. Leaving --logging_steps and --max_grad_norm at their defaults yields exactly
+    the historical configuration (per-epoch logging, clip norm 1.0 == the HF Trainer
+    default), so published base-model runs remain bit-identical.
+    """
+    # Logging cadence: default keeps per-epoch logging; --logging_steps switches to
+    # step-based logging so a smoke test surfaces NaN/inf within a few optimizer steps.
+    if args.logging_steps is not None:
+        logging_kwargs = {"logging_strategy": "steps", "logging_steps": args.logging_steps}
+    else:
+        logging_kwargs = {"logging_strategy": "epoch"}
+    return TrainingArguments(
+        output_dir=args.output_dir,
+        learning_rate=args.learning_rate,
+        per_device_train_batch_size=args.per_device_train_batch_size,
+        per_device_eval_batch_size=args.per_device_eval_batch_size,
+        gradient_accumulation_steps=args.gradient_accumulation_steps,
+        num_train_epochs=args.num_train_epochs,
+        warmup_ratio=args.warmup_ratio,
+        weight_decay=args.weight_decay,
+        # 1.0 == the HF Trainer default (a no-op); lower it as an fp16-stability fallback.
+        max_grad_norm=args.max_grad_norm,
+        fp16=args.fp16,
+        gradient_checkpointing=args.gradient_checkpointing,
+        gradient_checkpointing_kwargs={"use_reentrant": False},
+        eval_strategy="epoch",
+        save_strategy="epoch",
+        load_best_model_at_end=True,
+        # ADR-013 default: select on the derived response-level F1 -- stable from epoch 1,
+        # unlike the near-zero exact-match span F1 that drove the BIO run's selection. The
+        # ablation arms (b/c) switch to token_f1 via --checkpoint_metric to match
+        # LettuceDetect's documented recipe. Trainer prefixes eval_ itself.
+        metric_for_best_model=f"eval_{CHECKPOINT_METRICS[args.checkpoint_metric]}",
+        greater_is_better=True,
+        save_total_limit=1,
+        seed=args.seed,
+        report_to="none",
+        # push_to_hub deliberately NOT set (defaults False): no auto-push of intermediate
+        # checkpoints. All Hub pushing happens once via maybe_push_to_hub() at the end.
+        **logging_kwargs,
+    )
+
+
 def main() -> None:
     args = parse_args()
     set_seed(args.seed)
@@ -641,34 +702,7 @@ def main() -> None:
         attn_implementation=ATTN_IMPLEMENTATION,
     )
 
-    training_args = TrainingArguments(
-        output_dir=args.output_dir,
-        learning_rate=args.learning_rate,
-        per_device_train_batch_size=args.per_device_train_batch_size,
-        per_device_eval_batch_size=args.per_device_eval_batch_size,
-        gradient_accumulation_steps=args.gradient_accumulation_steps,
-        num_train_epochs=args.num_train_epochs,
-        warmup_ratio=args.warmup_ratio,
-        weight_decay=args.weight_decay,
-        fp16=args.fp16,
-        gradient_checkpointing=args.gradient_checkpointing,
-        gradient_checkpointing_kwargs={"use_reentrant": False},
-        eval_strategy="epoch",
-        save_strategy="epoch",
-        load_best_model_at_end=True,
-        # ADR-013 default: select on the derived response-level F1 -- stable from epoch 1,
-        # unlike the near-zero exact-match span F1 that drove the BIO run's selection. The
-        # ablation arms (b/c) switch to token_f1 via --checkpoint_metric to match
-        # LettuceDetect's documented recipe. Trainer prefixes eval_ itself.
-        metric_for_best_model=f"eval_{CHECKPOINT_METRICS[args.checkpoint_metric]}",
-        greater_is_better=True,
-        save_total_limit=1,
-        seed=args.seed,
-        logging_strategy="epoch",
-        report_to="none",
-        # push_to_hub deliberately NOT set (defaults False): no auto-push of intermediate
-        # checkpoints. All Hub pushing happens once via maybe_push_to_hub() at the end.
-    )
+    training_args = build_training_args(args)
 
     trainer = WeightedTokenTrainer(
         model=model,
