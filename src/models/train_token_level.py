@@ -410,11 +410,12 @@ def build_prediction_records(labels, predictions, df: pd.DataFrame) -> list[dict
     """Per-example test predictions in the ablation dump format (scripts/ablation_report.py).
 
     labels/predictions are per-row sequences (rows may have different lengths -- lists of
-    1-D arrays are fine, everything downstream zips row-wise). Spans are char-level;
-    gold_spans mirror the parquet's normalized gold so the report script can cross-check
-    them against raw metadata.
+    1-D arrays are fine, everything downstream zips row-wise). pred_spans/gold_spans are
+    char-level (gold_spans mirror the parquet's normalized gold so the report script can
+    cross-check them against raw metadata); gold_token_spans are token-aligned, letting a
+    consumer recompute exact_span_prf from the dump alone without rerunning inference.
     """
-    pred_spans, gold_char_spans, _ = split_spans(predictions, labels, df)
+    pred_spans, gold_char_spans, gold_token_spans = split_spans(predictions, labels, df)
     resp_true, resp_pred = derive_response_labels(labels, predictions)
     records = []
     for i in range(len(df)):
@@ -424,6 +425,7 @@ def build_prediction_records(labels, predictions, df: pd.DataFrame) -> list[dict
             "task_type": str(df["task_type"].iloc[i]),
             "pred_spans": [[int(start), int(end)] for start, end in pred_spans[i]],
             "gold_spans": [[int(start), int(end)] for start, end in gold_char_spans[i]],
+            "gold_token_spans": [[int(start), int(end)] for start, end in gold_token_spans[i]],
             "resp_true": int(resp_true[i]),
             "resp_pred": int(resp_pred[i]),
         }
@@ -431,6 +433,25 @@ def build_prediction_records(labels, predictions, df: pd.DataFrame) -> list[dict
             record["response_id"] = str(df["response_id"].iloc[i])
         records.append(record)
     return records
+
+
+def build_metrics_report(labels, predictions, df: pd.DataFrame, seed: int) -> dict:
+    """The full per-split metrics block: span/response metrics, trivial baselines, per-task F1.
+
+    Pure function of an already-predicted split (labels, predictions, df) plus the seed the
+    trivial random baseline needs -- no trainer, no argparse Namespace required. Shared by
+    build_token_test_report (freshly-trained arms b/c, called mid-main()) and
+    scripts/dump_token_predictions.py (arm a and any other already-trained checkpoint,
+    inference-only, no training hyperparameters to report).
+    """
+    metrics, resp_true, resp_pred = evaluate_split(labels, predictions, df)
+    baselines = trivial_baselines(resp_true, seed)
+    return {
+        **metrics,
+        "always_hallucinated": baselines["always_hallucinated"],
+        "random": baselines["random"],
+        "per_task_type": per_task_breakdown(df["task_type"].tolist(), resp_true, resp_pred),
+    }
 
 
 def build_token_test_report(
@@ -456,8 +477,7 @@ def build_token_test_report(
     test_labels, test_preds = _predict_token_labels(trainer, test_ds)
 
     val_metrics, _, _ = evaluate_split(val_labels, val_preds, val_df)
-    test_metrics, test_resp_true, test_resp_pred = evaluate_split(test_labels, test_preds, test_df)
-    baselines = trivial_baselines(test_resp_true, args.seed)
+    test_block = build_metrics_report(test_labels, test_preds, test_df, args.seed)
 
     report = {
         "model_name": args.model_name,
@@ -480,12 +500,7 @@ def build_token_test_report(
         "counts": counts,
         "best_checkpoint": best_checkpoint,
         "val": val_metrics,
-        "test": {
-            **test_metrics,
-            "always_hallucinated": baselines["always_hallucinated"],
-            "random": baselines["random"],
-            "per_task_type": per_task_breakdown(test_df["task_type"].tolist(), test_resp_true, test_resp_pred),
-        },
+        "test": test_block,
     }
     return report, test_labels, test_preds
 
