@@ -127,6 +127,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "(fixed-epoch recipes like the LettuceDetect-parity ablation arms).",
     )
     parser.add_argument(
+        "--save_total_limit",
+        type=int,
+        default=1,
+        help="Max checkpoints kept on disk (HF Trainer rotates out older ones). 1 (default) == "
+        "current behavior. Note load_best_model_at_end=True can still retain 2 (best + latest) "
+        "even at limit=1.",
+    )
+    parser.add_argument(
         "--checkpoint_metric",
         choices=sorted(CHECKPOINT_METRICS),
         default="response_f1",
@@ -628,7 +636,7 @@ def build_training_args(args: argparse.Namespace) -> TrainingArguments:
         # LettuceDetect's documented recipe. Trainer prefixes eval_ itself.
         metric_for_best_model=f"eval_{CHECKPOINT_METRICS[args.checkpoint_metric]}",
         greater_is_better=True,
-        save_total_limit=1,
+        save_total_limit=args.save_total_limit,
         seed=args.seed,
         report_to="none",
         # push_to_hub deliberately NOT set (defaults False): no auto-push of intermediate

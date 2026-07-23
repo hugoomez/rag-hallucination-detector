@@ -1,9 +1,10 @@
-"""Unit tests for the --logging_steps / --max_grad_norm flags and their wiring.
+"""Unit tests for the --logging_steps / --max_grad_norm / --save_total_limit flags and their wiring.
 
 These flags exist to support the ModernBERT-large fp16-stability experiment (tighter
-loss logging + a gradient-clip fallback). The load-bearing property tested here is that
-leaving BOTH at their defaults reproduces exactly the historical TrainingArguments, so
-published base-model runs stay bit-identical -- the new knobs are no-ops until used.
+loss logging + a gradient-clip fallback) and disk-space control across parallel runs.
+The load-bearing property tested here is that leaving all of them at their defaults
+reproduces exactly the historical TrainingArguments, so published base-model runs
+stay bit-identical -- the new knobs are no-ops until used.
 """
 
 from src.models.train_token_level import build_training_args, parse_args
@@ -53,4 +54,19 @@ def test_max_grad_norm_override(tmp_path):
     ta = build_training_args(_args(tmp_path, "--max_grad_norm", "0.5"))
     assert ta.max_grad_norm == 0.5
     # Only clipping changes; logging cadence stays at the historical per-epoch default.
+    assert ta.logging_strategy == "epoch"
+
+
+def test_save_total_limit_default_leaves_training_args_unchanged(tmp_path):
+    # save_total_limit=1 has been hardcoded here since this script's first version;
+    # the default must reproduce that exact value, not HF's own unlimited default.
+    ta = build_training_args(_args(tmp_path))
+    assert ta.save_total_limit == 1
+
+
+def test_save_total_limit_override(tmp_path):
+    ta = build_training_args(_args(tmp_path, "--save_total_limit", "2"))
+    assert ta.save_total_limit == 2
+    # Only the checkpoint cap changes; the rest of the recipe is untouched.
+    assert ta.max_grad_norm == HF_DEFAULT_MAX_GRAD_NORM
     assert ta.logging_strategy == "epoch"
