@@ -1,4 +1,4 @@
-# Diluted in Training, Exact in Evaluation: A Conflated Error Class in RAGTruth
+# Two Kinds of Hallucination, One Positive Class: A Concentrated Conflation in RAGTruth
 
 *Working draft. Chapter-by-chapter, following [`07-paper-outline.md`](07-paper-outline.md)
 structure and word budgets. Venue undecided.*
@@ -14,16 +14,21 @@ benchmark's own annotators mark a distinction that every public evaluation disca
 happen to be true — 13.5% of gold spans by count, 14.56% by character mass — and marks
 them, in 90.6% of cases, with the annotators' own low-intensity severity prefix, against
 4.4% for other gold spans. These two subclasses are marked as differing in severity by the
-benchmark's own annotators, and are nonetheless scored identically. We show this
-conflation behaves asymmetrically across the pipeline. At training time it is diluted:
-down-weighting the ungrounded-but-true subclass in the loss, under a pre-registered
-decision rule, produced no measurable improvement in clean-span F1 at the one setting
-tested. At evaluation time it is exact: because official scoring counts every flagged
-character directly, any prediction set that excludes this subclass is capped at 90.5%
-char-overlap span recall against gold, independent of any model. We report both findings
-as a benchmark-quality contribution, not a detection method, and show that the metric
-needed to distinguish these subclasses already exists in data the benchmark ships but no
-published evaluation uses.
+benchmark's own annotators, and are nonetheless scored identically. The conflation is not a
+scattering of annotator disagreement: it concentrates in one span type — nearly three
+quarters of spans typed "Subtle Baseless Info" — and is unevenly distributed by task type,
+the structure of a real, recognized subclass rather than of noise. We quantify what this
+structured conflation costs under RAGTruth's official scoring: because the protocol counts
+every flagged character directly, any prediction set that excludes the low-intensity
+subclass is capped at 90.5% char-overlap span recall against gold, independent of any
+model — a direct consequence of the conflation, not a second, independent result. We also
+tested whether the conflation could be exploited at training time, by down-weighting the
+low-intensity subclass in the loss under a pre-registered decision rule; it produced no
+measurable improvement in clean-span F1 at the one setting tested, a negative result we
+report as one rather than repackage as a further finding. We report this as a
+benchmark-quality contribution, not a detection method, and show that the metric needed to
+distinguish these subclasses already exists in data the benchmark ships but no published
+evaluation uses.
 
 **Keywords:** RAGTruth; hallucination detection; retrieval-augmented generation; benchmark
 evaluation; label-class conflation; annotation metadata
@@ -60,19 +65,17 @@ ungrounded-and-false content and ungrounded-but-true content identically, even t
 benchmark's own annotators mark them as differing in severity — so no reported F1
 distinguishes performance on the two subclasses.**
 
-The distinction matters most for a detector whose output feeds a human reviewer rather
-than an automated block. A production RAG deployment that routes flagged spans to review
-has, in practice, review capacity well below its hallucination rate, and cannot give every
-flagged span the same scrutiny. Such a deployment has reason to prioritize
+The distinction matters most where a detector's output feeds a human reviewer rather than
+an automated block: such a deployment would reasonably want to prioritize
 ungrounded-and-false content — the subclass a reviewer must catch — over
-ungrounded-but-true content, which is wrong about grounding but not about the world, and to
-build or select a detector accordingly. RAGTruth's official scoring cannot express that
-priority: it counts a decision to deprioritize the low-severity subclass as an equivalent
-miss to failing on the high-severity one, so a detector built for triage is scored by the
-same metric as one that draws no such distinction, and is penalized for the distinction
-rather than credited for it. No published evaluation on this benchmark can say whether a
-system was built with this priority in mind or simply happened to miss fewer
-ungrounded-but-true spans.
+ungrounded-but-true content, which is wrong about grounding but not about the world. We do
+not evidence how production RAG deployments actually triage flagged output, and the point
+below does not depend on that evidence. It is narrower: RAGTruth's official scoring cannot
+express such a priority even where a deployment holds it. The protocol counts a decision to
+deprioritize the low-severity subclass as an equivalent miss to failing on the high-severity
+one, so a detector built for triage is scored by the same metric as one that draws no such
+distinction. No published evaluation on this benchmark can say whether a system was built
+with this priority in mind or simply happened to miss fewer ungrounded-but-true spans.
 
 A reader may reasonably respond that every benchmark carries some label noise, so what? The
 objection does not apply here, for two reasons, and it is worth settling before the evidence
@@ -108,7 +111,7 @@ instance: 49 of the 943 hallucinated test responses consist *entirely* of flagge
 the same protocol-level argument caps response-level recall at 94.8% for any prediction set
 that omits the low-intensity subclass.
 
-One clarification matters before either leg is presented. The bound above is a property of
+One clarification matters before the paper puts this bound to use. It is a property of
 RAGTruth's scoring protocol — computable directly from the released gold labels,
 independent of whether any detector can, or should, restrict its predictions to the
 high-severity subclass. It does not propose such a detector, and no experiment in this
@@ -116,17 +119,22 @@ paper builds one. What it shows is that any prediction set scored against offici
 while omitting the low-intensity subclass is capped at that recall by construction, before
 any model exists.
 
-The paper's thesis is that this single property of the benchmark behaves **asymmetrically
-across the pipeline**. At training time it is diluted: down-weighting the ungrounded-but-true
-subclass in the loss, under a pre-registered decision rule, produced no measurable
-improvement in clean-span F1 at the setting tested — the intervention competes with every
-other gradient signal across the whole of training. At evaluation time it is exact: the
-scoring protocol counts every flagged character directly, undiluted, so it fixes what any
-reported RAGTruth recall figure can mean once the low-intensity subclass is excluded from
-what counts as caught. The asymmetry is the finding — two measurements of one
-underlying fact at two stages of the same pipeline — and the paper is organized as its two
-legs: the training-side null (§5) and the evaluation-side bound (§6), on the shared factual
-basis established in §4.
+§4 establishes what this property of the benchmark actually is: not a scattering of
+annotator disagreement but a **structured subclass** — concentrated in one span type,
+unevenly distributed by task, and already marked as low-severity by the annotators who
+labelled it. That structure is this paper's central finding. Two things follow from it, and
+neither is inflated into a co-equal second finding. §6 quantifies what the conflation costs
+under RAGTruth's official scoring — a direct arithmetic consequence of §4, computable before
+any model is trained: the scoring protocol counts every flagged character directly,
+undiluted, so it fixes what any reported RAGTruth recall figure can mean once the
+low-intensity subclass is excluded from what counts as caught. §5 asks whether the same
+conflation can instead be *exploited* at training time, by teaching a model to discount the
+low-severity subclass through loss down-weighting; under a pre-registered decision rule, at
+the setting tested, it could not — a negative result, reported as one, not repackaged as a
+second leg. The two are worth holding side by side for one reason, developed in §7.1 as a
+discussion point rather than asserted here as the thesis: the same quantity that is too
+small to move a training process is large enough to bend a scoring function, so their
+difference is not a contradiction.
 
 This is a benchmark-quality contribution, not a detection method. No number reported here
 is a new record, and none needs to be. The token-level detector used as the instrument
@@ -257,9 +265,9 @@ The claim is exactly the top two rows; we do not extend it to the leaderboard as
 ## 3. Methods
 
 Three subsections, deliberately kept apart so that pre-registered and post-hoc work are
-visibly distinct: the annotation audit that establishes the shared fact (§3.1), the
-pre-registered ablation behind the training-side leg (§3.2), and the exploratory
-re-scoring behind the evaluation-side leg's case study (§3.3).
+visibly distinct: the annotation audit that establishes the central finding (§3.1), the
+pre-registered ablation behind §5's training-time attempt (§3.2), and the exploratory
+re-scoring behind §6's case study (§3.3).
 
 ### 3.1 Annotation audit computation
 
@@ -421,9 +429,9 @@ support. We do neither.
 
 ## 4. The conflated label class
 
-This section establishes the single fact that both of the paper's legs measure. Everything
-in it is a census over RAGTruth as released: exact counts over a closed corpus, carrying no
-intervals, per §3.3.
+This section establishes the paper's central finding: the structured conflation that §5 and
+§6 each build on. Everything in it is a census over RAGTruth as released: exact counts over
+a closed corpus, carrying no intervals, per §3.3.
 
 Across the whole corpus, **1,928 of 14,289 gold spans carry `implicit_true`** — 13.5% by
 count, and 110,171 of 756,461 characters, **14.56% of gold-span character mass**. Under the
@@ -501,19 +509,19 @@ two fields are not interchangeable metadata. One marks the ungrounded-but-true s
 one marks a severe one, and only the second has an authors'-provided scoring affordance
 (§2.4).
 
-One asymmetry is worth stating plainly and then leaving alone. The flagged subclass is
-**more concentrated in train (14.49% of positive tokens) than in test (8.95%)**. For a paper
-whose sharper claim is about evaluation, that cuts against the tidy story: the phenomenon is
-denser exactly where §5's intervention produced no measurable effect. We report it as a
-methodological fact and
-decline to recruit it as support for the asymmetry thesis, in either direction. Sensitivity
-to a subclass at training time is not required to scale with that subclass's concentration,
-and we have no measurement that would establish it does. §5's null is scoped to the setting
-tested, and this table does not widen it.
+One split-level difference is worth stating plainly and then leaving alone. The flagged
+subclass is **more concentrated in train (14.49% of positive tokens) than in test
+(8.95%)**. For a paper whose sharper claim (§6) is about evaluation, that cuts against the
+tidy story: the phenomenon is denser exactly where §5's intervention produced no measurable
+effect. We report it as a methodological fact and decline to recruit it as support for
+either §5 or §6, in either direction. Sensitivity to a subclass at training time is not
+required to scale with that subclass's concentration, and we have no measurement that would
+establish it does. §5's null is scoped to the setting tested, and this table does not widen
+it.
 
 ---
 
-## 5. Training-side leg: the ACWS null
+## 5. Attempting to exploit the conflation at training time: the ACWS null
 
 The training-side question is whether a model can be taught to discount the
 ungrounded-but-true subclass by the simplest available mechanism — down-weighting those
@@ -616,12 +624,13 @@ have collapsed into one. That, and not the −0.0045, is what §7 carries forwar
 
 ---
 
-## 6. Evaluation-side leg: the divergence bound
+## 6. Quantifying the conflation's cost at evaluation time
 
-At training time the conflated class produced no measurable effect at the setting tested. At
-evaluation time it is not inconsequential, and the reason is arithmetic rather than
-empirical: RAGTruth's official scoring counts the ungrounded-but-true subclass as gold, so a
-detector that declines to flag it is scored as having missed it.
+§4 established that the conflation is real and structured. This section quantifies what it
+costs under RAGTruth's official scoring — a direct, model-independent consequence of that
+structure, not a second, independent result. The reason is arithmetic rather than empirical:
+RAGTruth's official scoring counts the ungrounded-but-true subclass as gold, so a detector
+that declines to flag it is scored as having missed it.
 
 ### 6.1 The span-level bound
 
@@ -742,11 +751,13 @@ report.
 
 ## 7. Discussion
 
-### 7.1 Why the asymmetry is coherent
+### 7.1 The training-time null and the evaluation-time bound are independent claims
 
-The two legs could be read as one fact measured twice, with the difference between them
-explained by nothing more than measurement error. They are not, and the reason is that the
-two stages weight the same tokens by different quantities.
+A reader could reasonably wonder whether §5's null and §6's bound are in tension: if the
+conflated subclass is large enough to cap recall at 90.5% (§6), why did down-weighting it in
+training move nothing (§5)? They are not in tension, and neither result bears on the
+other's validity — the reason is that the two stages weight the same tokens by entirely
+different quantities.
 
 At training time, the flagged subclass enters through the loss. It is roughly 0.7–0.8% of
 supervised tokens, and down-weighting it at λ = 0.25 moves on the order of 0.2% of total
@@ -756,12 +767,12 @@ through the scoring function, where it is 9.49% of test gold character mass and 
 by nothing at all. Each flagged character is counted once, directly, against any detector
 that declines to flag it.
 
-So the asymmetry does not require the two measurements to disagree about anything. A
-quantity can be too small to steer a training process and large enough to bend a metric,
-and here it demonstrably is both. The stronger evidence for the reading is that the
-evaluation-side leg needs no model: §6.1's bound is arithmetic over the released corpus and
-holds before any system is trained. It cannot be an artifact of measuring the training-side
-question twice, because it is not a measurement of a model at all.
+A quantity can be too small to steer a training process and large enough to bend a metric,
+and here it demonstrably is both. The stronger reason to treat the two as independent is
+that §6's bound needs no model: it is arithmetic over the released corpus and holds before
+any system is trained, so it cannot be undermined by a training-time null. Symmetrically,
+§5's null is not weakened by §6's bound: a model's inability to exploit a training signal
+says nothing about the scoring protocol's arithmetic.
 
 ### 7.2 The arm-b complication
 
@@ -914,31 +925,37 @@ future work and note the gap rather than approximate it.
 ## 9. Conclusion
 
 RAGTruth's positive class aggregates two materially different error types, and the benchmark
-ships the field that separates them. The consequence at evaluation time is exact and
-model-independent: flagged spans are 8,151 of the 85,877 characters of test gold span mass,
-so **under RAGTruth's official scoring, any prediction set that omits the low-intensity
-subclass is capped at 90.5% char-overlap span recall against gold** — a property of the
-scoring protocol, not a claim about what any detector does. At the
-coarser response level, 49 of 943 hallucinated test responses are entirely flagged, giving
-the corroborating 94.8% figure. Both are census counts over a closed, fully enumerated test
-split, computed from the released corpus and carrying no confidence interval, because
-nothing is being estimated. Neither depends on any model, and both hold before a detector is
-trained.
+ships the field that separates them. §4 showed this is not a scattering of annotator
+disagreement: the conflation concentrates in one span type — nearly three quarters of spans
+typed "Subtle Baseless Info" — and is unevenly distributed by task, the structure of a real,
+annotator-recognized subclass. That structured finding is what the rest of the paper builds
+on.
 
-The training-side result is narrower and weaker, and we claim it as such. Down-weighting the
-ungrounded-but-true subclass in the loss at λ = 0.25, under a decision rule fixed in code
-before the arms ran, produced no measurable improvement in clean-span F1 — at one λ, one
-seed, one architecture, with an intervention touching roughly 0.2% of loss mass and a
-confound we could not resolve because λ = 0 was never run.
+Its consequence at evaluation time is exact and model-independent: flagged spans are 8,151
+of the 85,877 characters of test gold span mass, so **under RAGTruth's official scoring, any
+prediction set that omits the low-intensity subclass is capped at 90.5% char-overlap span
+recall against gold** — a property of the scoring protocol, not a claim about what any
+detector does, and a direct arithmetic consequence of §4 rather than an independent second
+result. At the coarser response level, 49 of 943 hallucinated test responses are entirely
+flagged, giving the corroborating 94.8% figure. Both are census counts over a closed, fully
+enumerated test split, computed from the released corpus and carrying no confidence
+interval, because nothing is being estimated. Neither depends on any model, and both hold
+before a detector is trained.
 
-What connects them is the asymmetry, and the asymmetry is the finding. One property of one
-benchmark produces no measurable effect where it is denser (14.49% of train positive tokens)
-and an exact, provable bound where it is thinner (8.95% of test *positive tokens* — a
-different denominator from the 8,151/85,877 test *character-mass* figure above, 9.49%, and
-not to be read as a rounding of it), because training dilutes it across an objective while
-scoring counts it directly. The two legs are not one result
-measured twice; they are what a single annotation fact does at two stages that weight it
-differently.
+We also tested whether the same conflation could be exploited at training time. Down-weighting
+the ungrounded-but-true subclass in the loss at λ = 0.25, under a decision rule fixed in
+code before the arms ran, produced no measurable improvement in clean-span F1 — at one λ,
+one seed, one architecture, with an intervention touching roughly 0.2% of loss mass and a
+confound we could not resolve because λ = 0 was never run. This is a negative result,
+narrower and weaker than the finding it sits beside, and we claim it as such rather than as
+a second leg.
+
+The evaluation-time bound and the training-time null are not in tension, for the reason
+§7.1 gives: the same quantity that is too small to steer a training process (0.2% of loss
+mass) is large enough to bend a scoring function (9.49% of test character mass; 8.95% of
+test positive tokens is the related but distinct train/test density figure from §4), so a
+real finding and a real null coexist without contradiction. They are two different
+questions asked of the same structured fact, not one result measured twice.
 
 We close with an implication we have not demonstrated and offer as speculation rather than
 as a lesson. `implicit_true` exists because RAGTruth's annotators recorded not only *that* a
@@ -1030,7 +1047,7 @@ https://doi.org/10.18653/v1/2023.acl-long.634
 **This appendix is methodologically separate from the paper's argument and is not part of
 it.** It reports a backbone-scaling comparison that shares infrastructure with the
 experiments above but tests nothing about `implicit_true`, contributes no evidence for or
-against either leg of §5–§6, and would be removed without affecting any claim the paper
+against §4, §5, or §6, and would be removed without affecting any claim the paper
 makes. It is included because the data exists and is worth reporting on its own terms, not
 because it supports anything else here.
 
