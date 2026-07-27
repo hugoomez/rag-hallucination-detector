@@ -1,0 +1,100 @@
+{
+  "model_name": "answerdotai/ModernBERT-large",
+  "hyperparameters": {
+    "learning_rate": 1e-05,
+    "per_device_train_batch_size": 2,
+    "num_train_epochs": 4.0,
+    "warmup_ratio": 0.1,
+    "weight_decay": 0.01,
+    "seed": 42,
+    "class_weight_cap": null,
+    "class_weights": null,
+    "gradient_accumulation_steps": 4,
+    "gradient_checkpointing": true,
+    "attn_implementation": "sdpa",
+    "checkpoint_metric": "token_f1",
+    "implicit_true_weight": 1.0,
+    "early_stopping_patience": 6
+  },
+  "counts": {
+    "train_rows": 13578,
+    "val_rows": 1512,
+    "test_rows": 2700,
+    "train_token_labels": {
+      "supported": 2164965,
+      "hallucinated": 126646
+    }
+  },
+  "best_checkpoint": {
+    "metric": "token_f1",
+    "value": 0.5513047884469218,
+    "epoch": 2.0,
+    "step": 3396
+  },
+  "val": {
+    "span_char_level": {
+      "precision": 0.6642022770959634,
+      "recall": 0.4660234464156033,
+      "f1": 0.5477380807218633
+    },
+    "response_level_derived": {
+      "accuracy": 0.8247354497354498,
+      "precision": 0.8491228070175438,
+      "recall": 0.7300150829562594,
+      "f1": 0.7850770478507705
+    },
+    "span_exact_match": {
+      "precision": 0.17212543554006968,
+      "recall": 0.20064987814784727,
+      "f1": 0.18529632408102026
+    }
+  },
+  "test": {
+    "span_char_level": {
+      "precision": 0.695385939361843,
+      "recall": 0.4926774931113326,
+      "f1": 0.5767385679676615
+    },
+    "response_level_derived": {
+      "accuracy": 0.8659259259259259,
+      "precision": 0.8529769137302552,
+      "recall": 0.7444326617179216,
+      "f1": 0.7950169875424689
+    },
+    "span_exact_match": {
+      "precision": 0.16828148903620602,
+      "recall": 0.22132796780684105,
+      "f1": 0.19119351100811127
+    },
+    "always_hallucinated": {
+      "precision": 0.34925925925925927,
+      "recall": 1.0,
+      "f1": 0.5177051880318418
+    },
+    "random": {
+      "precision": 0.3497390007457122,
+      "recall": 0.4973488865323436,
+      "f1": 0.4106830122591944
+    },
+    "per_task_type": {
+      "Summary": {
+        "n": 900,
+        "precision": 0.7672413793103449,
+        "recall": 0.4362745098039216,
+        "f1": 0.55625
+      },
+      "QA": {
+        "n": 900,
+        "precision": 0.7533333333333333,
+        "recall": 0.70625,
+        "f1": 0.7290322580645161
+      },
+      "Data2txt": {
+        "n": 900,
+        "precision": 0.8976660682226212,
+        "recall": 0.8635578583765112,
+        "f1": 0.8802816901408451
+      }
+    }
+  }
+}
