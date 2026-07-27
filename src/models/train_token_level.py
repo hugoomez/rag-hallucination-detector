@@ -70,7 +70,6 @@ from src.models.train import (  # noqa: E402
 )
 
 MODEL_NAME = "answerdotai/ModernBERT-base"
-ATTN_IMPLEMENTATION = "sdpa"
 METRICS_PATH = RESULTS_DIR / "finetuned_track_b_token_level_metrics.json"
 
 # --checkpoint_metric choice -> compute_metrics key (Trainer prefixes "eval_" itself).
@@ -184,6 +183,19 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Mixed precision on bf16-capable GPUs (e.g. A100/L4/ModernBERT-large runs off Kaggle's "
         "T4). Default off, so Kaggle T4 runs are unaffected. If both --bf16 and --fp16 are set, "
         "--bf16 takes precedence and fp16 is forced off (see build_training_args).",
+    )
+    parser.add_argument(
+        "--attn_implementation",
+        choices=["sdpa", "eager"],
+        default="sdpa",
+        # "eager" is needed on some Ada Lovelace (RTX 40-series) consumer GPUs where SDPA's
+        # flash/memory-efficient CUDA kernels produce grad_norm: NaN despite loss appearing
+        # as a clean 0.0 -- likely related to documented SDPA padding-mask NaN bugs
+        # (pytorch/pytorch#103749, #109517) that don't manifest on Turing (T4) hardware, which
+        # falls back to the math-only SDPA backend. eager trades this instability for higher
+        # memory use, requiring a smaller batch size.
+        help="Attention backend (default sdpa, matching current Kaggle T4 behavior). Switch to "
+        "eager as a workaround for grad_norm: NaN on RTX 40-series/Ada Lovelace GPUs.",
     )
     parser.add_argument(
         "--gradient_checkpointing",
@@ -500,7 +512,7 @@ def build_token_test_report(
             "class_weights": None if class_weights is None else [round(float(w), 4) for w in class_weights.tolist()],
             "gradient_accumulation_steps": args.gradient_accumulation_steps,
             "gradient_checkpointing": args.gradient_checkpointing,
-            "attn_implementation": ATTN_IMPLEMENTATION,
+            "attn_implementation": args.attn_implementation,
             "checkpoint_metric": args.checkpoint_metric,
             "implicit_true_weight": args.implicit_true_weight,
             "early_stopping_patience": args.early_stopping_patience,
@@ -733,7 +745,7 @@ def main() -> None:
         num_labels=NUM_LABELS,
         id2label=ID2LABEL,
         label2id=LABEL2ID,
-        attn_implementation=ATTN_IMPLEMENTATION,
+        attn_implementation=args.attn_implementation,
     )
 
     training_args = build_training_args(args)
