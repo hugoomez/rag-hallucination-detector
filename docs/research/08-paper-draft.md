@@ -83,15 +83,17 @@ LettuceDetect's `preprocess_ragtruth.py` reads only `start`, `end`, and `label_t
 that RAGTruth's own vendored reference baseline contains no occurrence of the field at all.
 Luna (Belyi et al., 2024/2025) and RAG-HAT (Song et al., 2024) publish neither code nor
 weights; their treatment of the field is unverified and we do not assume it. Second, and
-more importantly, the field does not mark an error. Three independent sources establish
-that it is a **severity qualifier applied within the positive class**, not a retraction of
-the label: the README's own wording separates correctness from groundedness; the annotators'
-free-text comments assert both halves at once ("these details are correct, however, not
-directly mentioned in the passages"); and 90.6% of flagged spans open their annotator
-comment with a `LOW` intensity marker, against 4.4% of all other gold spans. The labels are
-right. What is at issue is that two error types of very different consequence are being
-scored as one. We therefore use the term **label-class conflation** throughout, and not
-"label noise" or "annotator disagreement."
+more importantly, the field does not mark an error. Two independent sources establish that
+it is a **severity qualifier applied within the positive class**, not a retraction of the
+label. The README's own wording separates correctness from groundedness. And RAGTruth's
+per-span `meta` field — a single annotator-written string, whose first line is a severity
+prefix and whose remainder is free text — carries both halves of the same signal: it
+consistently asserts that the content is true but ungrounded ("these details are correct,
+however, not directly mentioned in the passages"), and its severity prefix opens with `LOW`
+for 90.6% of flagged spans, against 4.4% of all other gold spans. The labels are right. What
+is at issue is that two error types of very different consequence are being scored as one.
+We therefore use the term **label-class conflation** throughout, and not "label noise" or
+"annotator disagreement."
 
 The magnitude is exact, because the RAGTruth test set is the object of study rather than a
 sample from which anything is estimated. Flagged spans account for 8,151 of 85,877
@@ -437,6 +439,17 @@ unflagged gold spans have close to inverted distributions:
 |---|---:|---:|---:|---:|
 | `implicit_true = True` | 1,928 | **90.6%** | 0.8% | 8.6% |
 | all other gold spans | 12,361 | 4.4% | **46.4%** | 49.2% |
+
+The predicate is exact, not approximate, and worth stating precisely because a plausible
+variant changes the numbers: a span counts as `LOW` (respectively `HIGH`) iff
+`meta.upper().startswith("LOW")` (`"HIGH"`), with no leading-whitespace stripping. Stripping
+before the check — an equally defensible reading — moves 17 flagged spans whose `meta`
+string opens with a literal newline before the tag, and a comparable share of unflagged
+spans, yielding 91.5% / 47.0% in place of 90.6% / 4.4%. Both variants preserve the
+finding — flagged spans are overwhelmingly `LOW`, unflagged spans are not — but we report
+the unstripped predicate because it is what §5's script and the pipeline's own
+`is_implicit_true_span()` companion code actually run, not because it is the only
+defensible choice.
 
 Nine in ten flagged spans are marked low-intensity by the annotator who labelled them,
 against fewer than one in twenty elsewhere. Read alongside the README's definition and the
@@ -920,8 +933,10 @@ confound we could not resolve because λ = 0 was never run.
 
 What connects them is the asymmetry, and the asymmetry is the finding. One property of one
 benchmark produces no measurable effect where it is denser (14.49% of train positive tokens)
-and an exact, provable bound where it is thinner (8.95% of test), because training dilutes
-it across an objective while scoring counts it directly. The two legs are not one result
+and an exact, provable bound where it is thinner (8.95% of test *positive tokens* — a
+different denominator from the 8,151/85,877 test *character-mass* figure above, 9.49%, and
+not to be read as a rounding of it), because training dilutes it across an objective while
+scoring counts it directly. The two legs are not one result
 measured twice; they are what a single annotation fact does at two stages that weight it
 differently.
 
@@ -1019,18 +1034,30 @@ against either leg of §5–§6, and would be removed without affecting any clai
 makes. It is included because the data exists and is worth reporting on its own terms, not
 because it supports anything else here.
 
-**What was run.** A matched three-seed comparison between ModernBERT-base and
-ModernBERT-large under arm b's recipe. Seeds (42, 123, 456) are matched across backbones —
-the same seed means the same weight-initialization draw and data shuffle — so the backbone
-is the only intended difference. Deltas are computed per seed and then aggregated. The
-base arm of this scaling comparison is the same three training runs used as §5.3's
-variance anchor for the training-side null — not a separate re-run, the identical runs
-read for a different purpose here.
+**What was run.** A three-seed comparison between ModernBERT-base and ModernBERT-large
+under arm b's recipe, intended as matched: the same seed should mean the same
+weight-initialization draw and data shuffle, so the backbone is the only difference. That
+intent is verifiable for two of the three seeds. Seeds 42 and 456 have full, recorded
+hyperparameters on both backbones and match on every axis (learning rate, epochs,
+checkpoint-selection metric, `implicit_true_weight`) other than backbone size — **2
+verified matched seeds**. Seed 123's large-backbone run was produced by the existing-model
+inference path rather than a training run's own reporting; its metrics file records only
+`{"seed": 123}` under hyperparameters, so its recipe cannot be confirmed to match the base
+arm — **1 seed of unrecorded training configuration**, included in the counts below because
+it was run and its output is real, but not verified as matched. Deltas are computed per
+seed and then aggregated. The base arm of this scaling comparison is the same three
+training runs used as §5.3's variance anchor for the training-side null — not a separate
+re-run, the identical runs read for a different purpose here.
 
 | Metric | Base mean | Large mean | Δ mean | Δ range | Direction | Published Δ (Kovács & Recski) |
 |---|---:|---:|---:|---|---|---:|
-| Response F1 | 0.7637 | 0.7948 | **+0.0311** | +0.0292 … +0.0323 | 3/3 seeds | +0.0315 |
-| Span F1 (char-overlap) | 0.5325 | 0.5733 | **+0.0408** | +0.0379 … +0.0446 | 3/3 seeds | +0.0349 |
+| Response F1 | 0.7637 | 0.7948 | **+0.0311** | +0.0292 … +0.0323 | 3/3 seeds\* | +0.0315 |
+| Span F1 (char-overlap) | 0.5325 | 0.5733 | **+0.0408** | +0.0379 … +0.0446 | 3/3 seeds\* | +0.0349 |
+
+*\*2 of 3 seeds (42, 456) are verified recipe-matched across backbones; seed 123's
+large-backbone run is of unrecorded training configuration (see "What was run," above, and
+the caveats below). "3/3" is the observed direction across all three runs as executed, not
+a claim that all three are verified matched.*
 
 At response level the observed gap is close to LettuceDetect's published base→large gap
 (+0.0311 against +0.0315), so "replicates" is a fair description of that row. At span level
@@ -1042,8 +1069,9 @@ figures is presented as a record.
 
 **No significance is claimed, and none is available at n = 3.** The aggregation script emits
 raw per-seed values, means, min/max ranges, and per-seed paired deltas by construction, and
-no p-values. The reportable statement is that the direction was consistent across 3 of 3
-matched seeds on both metrics, with the means and ranges above.
+no p-values. The reportable statement is that the direction was consistent across all 3
+seeds run on both metrics, with the means and ranges above — on a base of 2 verified
+matched seeds (42, 456) plus one seed (123) of unrecorded training configuration.
 
 **The gain is recall-led.** Response recall improves in 3/3 seeds (mean +0.0516), while
 response precision improves in only 2/3 (mean +0.0055, with one seed at −0.0028) and
