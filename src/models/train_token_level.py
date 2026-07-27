@@ -178,6 +178,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Mixed precision (default on; the T4 has no bf16); use --no-fp16 for a CPU smoke test.",
     )
     parser.add_argument(
+        "--bf16",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Mixed precision on bf16-capable GPUs (e.g. A100/L4/ModernBERT-large runs off Kaggle's "
+        "T4). Default off, so Kaggle T4 runs are unaffected. If both --bf16 and --fp16 are set, "
+        "--bf16 takes precedence and fp16 is forced off (see build_training_args).",
+    )
+    parser.add_argument(
         "--gradient_checkpointing",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -639,7 +647,10 @@ def build_training_args(args: argparse.Namespace) -> TrainingArguments:
         weight_decay=args.weight_decay,
         # 1.0 == the HF Trainer default (a no-op); lower it as an fp16-stability fallback.
         max_grad_norm=args.max_grad_norm,
-        fp16=args.fp16,
+        # --bf16 takes precedence over --fp16 (TrainingArguments rejects both at once): forcing
+        # fp16 off here means callers don't also need --no-fp16 to use bf16 on non-T4 hardware.
+        fp16=args.fp16 and not args.bf16,
+        bf16=args.bf16,
         gradient_checkpointing=args.gradient_checkpointing,
         gradient_checkpointing_kwargs={"use_reentrant": False},
         eval_strategy="epoch",
