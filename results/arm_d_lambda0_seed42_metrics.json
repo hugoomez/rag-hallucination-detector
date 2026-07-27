@@ -2,16 +2,16 @@
   "model_name": "answerdotai/ModernBERT-base",
   "hyperparameters": {
     "learning_rate": 1e-05,
-    "per_device_train_batch_size": 4,
+    "per_device_train_batch_size": 1,
     "num_train_epochs": 6.0,
     "warmup_ratio": 0.1,
     "weight_decay": 0.01,
     "seed": 42,
     "class_weight_cap": null,
     "class_weights": null,
-    "gradient_accumulation_steps": 2,
+    "gradient_accumulation_steps": 8,
     "gradient_checkpointing": true,
-    "attn_implementation": "sdpa",
+    "attn_implementation": "eager",
     "checkpoint_metric": "token_f1",
     "implicit_true_weight": 0.0,
     "early_stopping_patience": 6
@@ -27,44 +27,44 @@
   },
   "best_checkpoint": {
     "metric": "token_f1",
-    "value": 0.09949955843391227,
-    "epoch": 3.0,
-    "step": 5094
+    "value": 0.5138656866020715,
+    "epoch": 2.0,
+    "step": 3396
   },
   "val": {
     "span_char_level": {
-      "precision": 0.05886752451341244,
-      "recall": 0.2962962962962963,
-      "f1": 0.09822075596377151
+      "precision": 0.6089036735867266,
+      "recall": 0.43947949550190446,
+      "f1": 0.5105016699376786
     },
     "response_level_derived": {
-      "accuracy": 0.5251322751322751,
-      "precision": 0.43792325056433407,
-      "recall": 0.29260935143288086,
-      "f1": 0.3508137432188065
+      "accuracy": 0.8035714285714286,
+      "precision": 0.8039867109634552,
+      "recall": 0.7300150829562594,
+      "f1": 0.7652173913043478
     },
     "span_exact_match": {
-      "precision": 6.760868095463458e-05,
-      "recall": 0.0008123476848090983,
-      "f1": 0.00012482836100362004
+      "precision": 0.11568848758465011,
+      "recall": 0.16653127538586515,
+      "f1": 0.13653013653013654
     }
   },
   "test": {
     "span_char_level": {
-      "precision": 0.04058229562059019,
-      "recall": 0.29660549920853607,
-      "f1": 0.0713960127629969
+      "precision": 0.6333344713393192,
+      "recall": 0.43503546930878817,
+      "f1": 0.5157819374839261
     },
     "response_level_derived": {
-      "accuracy": 0.5444444444444444,
-      "precision": 0.3344867358708189,
-      "recall": 0.3075291622481442,
-      "f1": 0.32044198895027626
+      "accuracy": 0.8344444444444444,
+      "precision": 0.7966507177033493,
+      "recall": 0.7062566277836692,
+      "f1": 0.7487352445193929
     },
     "span_exact_match": {
-      "precision": 0.0002403268445085316,
-      "recall": 0.004024144869215292,
-      "f1": 0.0004535661639641682
+      "precision": 0.10690121786197564,
+      "recall": 0.158953722334004,
+      "f1": 0.12783171521035597
     },
     "always_hallucinated": {
       "precision": 0.34925925925925927,
@@ -79,21 +79,21 @@
     "per_task_type": {
       "Summary": {
         "n": 900,
-        "precision": 0.193717277486911,
-        "recall": 0.3627450980392157,
-        "f1": 0.2525597269624573
+        "precision": 0.65625,
+        "recall": 0.3088235294117647,
+        "f1": 0.42
       },
       "QA": {
         "n": 900,
-        "precision": 0.2765151515151515,
-        "recall": 0.45625,
-        "f1": 0.3443396226415094
+        "precision": 0.6666666666666666,
+        "recall": 0.7125,
+        "f1": 0.6888217522658611
       },
       "Data2txt": {
         "n": 900,
-        "precision": 0.6470588235294118,
-        "recall": 0.2469775474956822,
-        "f1": 0.3575
+        "precision": 0.859402460456942,
+        "recall": 0.844559585492228,
+        "f1": 0.8519163763066202
       }
     }
   }
