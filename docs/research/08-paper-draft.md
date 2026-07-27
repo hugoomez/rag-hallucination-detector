@@ -176,22 +176,18 @@ Response/example-level F1 on RAGTruth, each figure resolved to the paper that or
 | SelfCheckGPT w/ GPT-4-turbo | sampling-based | GPT-4-turbo | **60.5%** | Niu Table 5 (P 49.5 / R 77.7) |
 
 The ordering settles what the encoder track is: **the cheap frontier, not the frontier.**
-RAG-HAT's 8B-decoder DPO pipeline outscores every encoder here by a wide margin, and the
-benchmark's own fine-tuned Llama-2-13B baseline outscores LettuceDetect-base — so a
-~150M-parameter encoder reaching 76% on a T4, while returning character spans, is what this
-architecture class buys, and no more. Two caveats attach to the table rather than to any
-system in it. Luna's figure is the one entry taken from a secondary source — its paper
-resists text extraction and it releases no code or weights — and is labelled so wherever it
-appears. RAG-HAT shares **five of its seven authors** with RAGTruth's (Niu, Wu, Zhu, Zhong,
-Song), making it a poor candidate for independent external validation of the benchmark;
-that is a caveat about independence, not about the figure. The claim-decomposition family —
-AlignScore (Zha et al., 2023), which decomposes an input pair into chunk-level alignment
-scores and aggregates them; MiniCheck (Tang, Laban & Durrett, 2024), which trains small
-fact-checking models toward GPT-4-level grounding-verification accuracy at a fraction of
-the cost; and RefChecker (Hu et al., 2024), which checks claims at triplet granularity
-against reference evidence — informs this project's own baseline design (its
-sentence-splitting and per-pair scoring follow the same decompose-then-verify pattern) but
-reports no RAGTruth figures and cannot anchor a comparison here.
+RAG-HAT's 8B-decoder DPO pipeline and the benchmark's own fine-tuned Llama-2-13B baseline
+both outscore every encoder here. Two caveats attach to the table rather than to any system
+in it. Luna's figure is taken from a secondary source — its paper releases no code or
+weights — and is labelled so wherever it appears. RAG-HAT shares **five of its seven
+authors** with RAGTruth's (Niu, Wu, Zhu, Zhong, Song), a caveat about independence, not
+about the figure. **All figures in this table are response-level.** This paper's own bound
+(§6) is stated at the span level first, with response-level as a corroborating instance —
+the coarser granularity here, and the finer granularity there, should not be read as
+directly comparable numbers. The claim-decomposition family — AlignScore (Zha et al.,
+2023), MiniCheck (Tang, Laban & Durrett, 2024), and RefChecker (Hu et al., 2024) — informs
+this project's own baseline design but reports no RAGTruth figures and cannot anchor a
+comparison here.
 
 This table deliberately excludes this project's own instrument, arm b (§5.1,
 response-F1 76.31%): it is the replication baseline for the training-side ablation, not a
