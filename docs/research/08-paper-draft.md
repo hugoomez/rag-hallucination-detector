@@ -235,6 +235,17 @@ We contribute only the observation that prompted the question.
 
 ### 2.4 `implicit_true` has no literature
 
+The conceptual distinction this paper turns on — between a claim's *faithfulness* to its
+source and its *factuality* in the world — is not new. Maynez, Narayan, Bohnet & McDonald
+(2020) established it for abstractive summarization: a generated claim can be unfaithful to
+its source document while still being true of the world, and conflating the two
+overstates or understates a summarizer's hallucination rate depending on which direction
+the conflation runs. RAGTruth's ungrounded-but-true / ungrounded-and-false split is the same
+distinction, applied to retrieval-augmented generation instead of summarization. What we
+claim as novel is narrower than the distinction itself: **the conceptual distinction is
+established; the benchmark ships a machine-readable field encoding it; no published
+RAGTruth evaluation conditions on that field.**
+
 The field this paper audits was added to the **data**, not to the paper. RAGTruth's corpus
 README dates it to February 2024; the ACL 2024 paper (Niu et al., arXiv:2401.00396) does
 not mention it anywhere, checked against the full text on 2026-07-25. No source in our
@@ -465,6 +476,23 @@ comments themselves — *"these details are correct, however, not directly menti
 passages"* — this is what rules out reading the field as a retraction. It marks a subclass
 *within* the positive class, not an exception to it.
 
+**The comparison above is confounded by span kind, and a narrower cut removes the
+confound.** RAGTruth's four `label_type` values split into two kinds — Baseless Info
+("introduction of new information") and Conflict — and the two use different annotator
+vocabularies for severity. Conflict spans structurally almost never carry a `LOW`/`HIGH`
+prefix at all: 99.7% of Evident Conflict and 100% of Subtle Conflict spans fall in
+`none/other`, because conflict annotations are written as `"EVIDENT CONFLICT: ..."`, a
+different comment convention that carries no severity gradient. Including Conflict spans in
+the "all other gold spans" row therefore pads that row's `none/other` share for reasons that
+have nothing to do with severity. Restricting the comparison to Baseless Info spans only —
+where both `LOW` and `HIGH` are live options either way — removes that confound: of 1,921
+flagged Baseless Info spans, **90.9% are `LOW`**; of 6,843 unflagged Baseless Info spans,
+**83.7% are `HIGH`** and only **8.0% are `LOW`**. The inverted distribution survives the
+narrower, unconfounded cut — if anything the flagged/unflagged gap on `LOW` alone (90.9%
+against 8.0%) is a cleaner statement of the same severity split than the original
+all-gold-spans comparison, which mixed in a span kind that could not have scored `LOW`
+regardless of true severity.
+
 **The subclass is concentrated in one span type, not spread across four.**
 
 | `label_type` | spans | flagged | share |
@@ -572,23 +600,47 @@ response-level gain of 0.0002 is not a countervailing signal at this scale.
 
 ### 5.3 Reading the null
 
-The immediate question is whether −0.0045 is a result or a fluctuation. The most useful
-anchor available is the base recipe's seed-to-seed spread: three seeds of arm b's recipe
-(42, 123, 456) span **0.0006** in span F1 and 0.0012 in response F1. Against that floor the
-b→c movement is roughly seven times larger, and it points the wrong way. These same three
-seeded runs are also the ModernBERT-base arm of Appendix A's scaling comparison — the
-variance anchor used here and the base arm reported there are the identical three training
-runs, read for two different purposes.
+The immediate question is whether −0.0045 is a result or a fluctuation. §5.2's own
+comparison anchored this against the base recipe's seed-to-seed spread on *official* span
+F1 — a mismatched metric, since the b→c delta itself is on *clean* span F1. These same
+three seeded arm-b runs are also the ModernBERT-base arm of Appendix A's scaling
+comparison — the variance anchor used here and the base arm reported there are the
+identical three training runs, read for two different purposes.
 
-That comparison is mismatched in two ways we state rather than absorb. The seed spread is
-measured on *official* span F1 while the b→c delta is on *clean* span F1, and arm c is a
-single unreplicated seed, so the two quantities are not drawn from the same distribution.
-It is offered as **the most conservative point of comparison available, not the most
-favorable one**: a stricter anchor would require replicating arm c across seeds, which was
-not done. What it supports is narrow — that the movement is unlikely to be pure seed noise.
-It does not establish that the effect would replicate.
+A matched-metric anchor is now available, and it replaces the mismatched one. Arm b's
+clean-span F1 across its three real seeds (42, 123, 456) is **0.5307 / 0.5281 / 0.5336** —
+a spread of **0.0055**, computed directly by `scripts/ablation_report.py` from each seed's
+committed prediction dump. Two of arm c's three seeds also have real, committed prediction
+dumps now (`results/arm_c_seed42_preds.json`, `results/arm_c_seed123_preds.json`, recovered
+via Hub inference after the original run's metrics-save step was lost); the third
+(seed 456) does not, and is out of scope here per the deferred RunPod pass. Scored on the
+same matched metric, clean-span F1 for arm c is **0.5171** (seed 42) and **0.5209**
+(seed 123), giving matched b→c deltas of **−0.0136** and **−0.0072** — both negative, both
+several times larger than the 0.0055 seed-only spread, and consistent in direction with
+ADR-020's original single-seed finding. *Source for every figure in this paragraph:
+`results/clean_span_seed_variance.json`, written by
+`scripts/ablation_report.py --arm b42=... --arm b123=... --arm b456=... --arm c42=... --arm c123=...`
+against the five prediction dumps named above and `results/base_seed456_preds.json`.*
 
-Four constraints bound what this null can be read to mean, and none of them is
+One discrepancy is worth disclosing rather than absorbing. The recovered seed-42 clean-span
+F1 (0.5171) does not match ADR-020's originally reported figure for the same nominal
+setting (0.5262) — a 0.0091 gap, larger than the 0.0055 seed spread it is being compared
+against. Response F1 is close between the two (0.7623 recovered against 0.7633 originally
+reported), so the discrepancy is specific to the span-level metric rather than a wholesale
+mismatch, and we do not know its cause. §5.2's numbers remain sourced to ADR-020, unchanged;
+this is a separate, independently re-derivable computation from the recovered prediction
+dumps, and the two are not claimed to be the same measurement. Reconciling the gap is out of
+scope here and deferred alongside the rest of arm c's re-verification.
+
+With that caveat stated, the matched-metric comparison strengthens rather than weakens
+§5.2's conclusion: on the metric the hypothesis is actually about, arm c's clean-span F1 was
+lower than arm b's at both seeds where a direct comparison is now possible, by margins that
+exceed the base recipe's own seed noise. This is a post-hoc robustness check on the null's
+*direction*, not a re-run of the pre-registered decision rule — that rule's verdict (§5.2)
+still rests on the single seed it was evaluated against, and the four constraints below
+describe that rule's scope, not this supplementary check's.
+
+Five constraints bound what this null can be read to mean, and none of them is
 recoverable from the data we have.
 
 **One λ, one seed, one architecture.** The result is λ = 0.25, seed 42, ModernBERT-base. No
@@ -599,6 +651,15 @@ to land, with the tuning risk that implies.
 **The intervention is small.** Flagged tokens are roughly 0.7–0.8% of supervised tokens, and
 λ = 0.25 shifts on the order of **0.2% of total loss mass**. This is per-token gradient
 scaling on a thin slice of the objective, not a re-specification of it.
+
+**Checkpoint selection is on the wrong metric for what the hypothesis asks.** Arms b and c
+both select checkpoints on token-level F1 (§3.2), which scores flagged tokens the same as
+any other positive; the ACWS hypothesis is specifically about clean-span F1, which does not.
+Down-weighting flagged tokens in the loss shifts the token-F1 landscape across training
+steps, so checkpoint selection on token F1 may discard exactly the checkpoints where ACWS
+would have helped on clean-span F1 — an unresolved confound between what arm c was selected
+for and what it was evaluated on, stated here as acknowledged and not something this paper
+attempts to fix.
 
 **The null cannot distinguish two explanations.** It is equally consistent with the model
 being insensitive to this distinction and with the perturbation falling below the resolution
@@ -1013,6 +1074,10 @@ for large language models. arXiv:2405.14486.
 
 Kovács, Á., & Recski, G. (2025). LettuceDetect: A hallucination detection framework for
 RAG applications. arXiv:2502.17125.
+
+Maynez, J., Narayan, S., Bohnet, B., & McDonald, R. (2020). On faithfulness and factuality
+in abstractive summarization. *Proceedings of the 58th Annual Meeting of the Association
+for Computational Linguistics*, 1906–1919. https://doi.org/10.18653/v1/2020.acl-main.173
 
 Niu, C., Wu, Y., Zhu, J., Xu, S., Shum, K., Zhong, R., Song, J., & Zhang, T. (2024).
 RAGTruth: A hallucination corpus for developing trustworthy retrieval-augmented language

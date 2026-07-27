@@ -42,6 +42,7 @@ bibliography. No citation below passed silently; the row that failed initial ver
 | 7 | Hu et al. 2024 (RefChecker) | arXiv abstract page (`arXiv:2405.14486`), OpenAlex | **VERIFIED, one field unconfirmed** | Xiangkun Hu, Dongyu Ru, Lin Qiu, Qipeng Guo, Tianhang Zhang, Yang Xu, Yun Luo, Pengfei Liu, Yue Zhang, Zheng Zhang. Submitted 23 May 2024. **Amazon affiliation could not be confirmed from arXiv/OpenAlex metadata** (OpenAlex returns no institution field for these authors); it is stated only on the project's GitHub org page, a secondary, non-bibliographic source. Cited here as Hu et al. without asserting affiliation as a verified fact. |
 | 8 | Warner et al. 2024/2025 (ModernBERT) | arXiv abstract search (`arXiv:2412.13663`), ACL Anthology (`2025.acl-long.127`) | **VERIFIED** | Benjamin Warner + 13 co-authors. arXiv posted 18 Dec 2024; accepted ACL 2025. |
 | 9 | "RAGTruth++" / "RAGTruth-Enhance" | arXiv search, Semantic Scholar/OpenAlex (via web search) | **NOT FOUND** | No benchmark by either name located as of 2026-07-25. Not cited; not asserted to exist. |
+| 10 | Maynez, Narayan, Bohnet & McDonald 2020 (faithfulness/factuality) | arXiv abstract page (`arXiv:2005.00661`), ACL Anthology (`2020.acl-main.173`) | **VERIFIED** | Joshua Maynez, Shashi Narayan, Bernd Bohnet, Ryan McDonald. ACL 2020, pp. 1906–1919. DOI `10.18653/v1/2020.acl-main.173`. Added 2026-07-27 to close theme (b)'s conceptual-precedent gap (§4, item 2 below). |
 
 Row 2's rate-limit note: parallel Semantic Scholar queries for rows 2, 5, 6, 7 returned
 HTTP 429; those four were instead verified directly at arXiv (and, for the three that are
@@ -73,6 +74,29 @@ admissible primary resolvers and in this case more authoritative than an aggrega
   verification (see §1, row 1).
 - **Potential Use**: Ch. 1 (gap sentence), Ch. 2 (construction + faithfulness objective +
   `due_to_null` precedent), Ch. 4 (label definitions).
+
+### Maynez, J., Narayan, S., Bohnet, B., & McDonald, R. (2020). On faithfulness and factuality in abstractive summarization. *Proceedings of the 58th Annual Meeting of the Association for Computational Linguistics*, 1906–1919. DOI: 10.18653/v1/2020.acl-main.173. arXiv:2005.00661.
+
+- **Type**: Conference paper (ACL 2020).
+- **Method**: Large-scale human evaluation of abstractive summarization systems,
+  distinguishing a generated claim's *faithfulness* to its source document from its
+  *factuality* in the world — the two can diverge in either direction.
+- **Key Findings**: Neural abstractive summarizers are highly prone to generating content
+  unfaithful to the source, and conflating faithfulness with factuality misrepresents a
+  system's actual hallucination behavior; pretrained models produce more faithful summaries
+  than non-pretrained alternatives.
+- **Relevance**: The conceptual precedent for theme (b). RAGTruth's ungrounded-but-true /
+  ungrounded-and-false split is the same faithfulness/factuality distinction, applied to
+  retrieval-augmented generation instead of summarization. This paper establishes that the
+  *distinction* is not novel; what remains novel and is claimed as such is narrower —
+  RAGTruth ships a machine-readable field encoding the distinction at the span level, and no
+  published RAGTruth evaluation conditions on it. Closes the theme (b) gap noted in §4,
+  item 2 (originally: no external source addressed the faithfulness/factuality distinction
+  itself, only RAGTruth's own construction did).
+- **Quality**: High — ACL 2020, human-evaluation methodology, widely cited foundational
+  work in the faithfulness/factuality literature.
+- **Potential Use**: Ch. 2 (Related Work, novelty rescoping), Ch. 1 (gap sentence,
+  optionally).
 
 ### Kovács, Á., & Recski, G. (2025). LettuceDetect: A hallucination detection framework for RAG applications. arXiv:2502.17125.
 
@@ -196,6 +220,7 @@ admissible primary resolvers and in this case more authoritative than an aggrega
 | Source | (a) Token-level span detection on RAGTruth | (b) Label-class/objective conflation | (c) Metadata-conditioned scoring precedent | Method | Quality |
 |---|:---:|:---:|:---:|---|---|
 | Niu et al. 2024 (RAGTruth) | x | main | **main** | Corpus/annotation | High — primary |
+| Maynez et al. 2020 (faithfulness/factuality) | — | **main** (conceptual precedent) | — | Human evaluation | High — foundational |
 | Kovács & Recski 2025 (LettuceDetect) | **main** | x (discards the field, verified in code) | x (discards the field) | Encoder, token-level | High — reproducible |
 | Song et al. 2024 (RAG-HAT) | x | — | — | Decoder, DPO tuning | Primary for own figure; not independent validation |
 | Belyi et al. 2024/2025 (Luna) | x | — | — | Encoder, sliding window | Secondary-only figure |
@@ -220,7 +245,11 @@ contribution claim rests on, not an artifact of an incomplete search (see §4).
    ungrounded-and-false distinction.** None of RAGTruth, RAG-HAT, or LettuceDetect reports
    a metric conditioned on `implicit_true`; only `due_to_null` has an authors'-own
    include/exclude option (RAGTruth, theme c), and no verified source exercises it in a
-   published table.
+   published table. **Partially closed 2026-07-27**: the *conceptual* distinction
+   (faithfulness vs. factuality) is not itself novel — Maynez et al. 2020 (§1 row 10)
+   establishes it for summarization. What remains true, and is now the precisely-scoped
+   novelty claim, is narrower: no published *RAGTruth* evaluation conditions on the field
+   that encodes this distinction for this benchmark specifically.
 3. **The claim-decomposition family (AlignScore, MiniCheck, RefChecker) has no RAGTruth
    figures at all**, confirmed again at each paper's abstract this pass — they inform
    architectural design for theme (a)'s alternatives but cannot anchor a score comparison.
@@ -239,7 +268,7 @@ contribution claim rests on, not an artifact of an incomplete search (see §4).
 | Section | Key sources |
 |---|---|
 | Ch. 1 (Introduction) | Niu et al. 2024 |
-| Ch. 2 (Background/Related Work) | Niu et al. 2024; Kovács & Recski 2025; Song et al. 2024; Belyi et al. (secondary); Zha et al. 2023; Tang, Laban & Durrett 2024; Hu et al. 2024 |
+| Ch. 2 (Background/Related Work) | Niu et al. 2024; Maynez et al. 2020; Kovács & Recski 2025; Song et al. 2024; Belyi et al. (secondary); Zha et al. 2023; Tang, Laban & Durrett 2024; Hu et al. 2024 |
 | Ch. 3 (Methods) | Kovács & Recski 2025 (recipe); Warner et al. 2024/2025 (backbone) |
 | Ch. 4 (The conflated label class) | Niu et al. 2024 |
 | Appendix A (scaling replication) | Kovács & Recski 2025; Warner et al. 2024/2025 |
@@ -248,12 +277,12 @@ contribution claim rests on, not an artifact of an incomplete search (see §4).
 
 ## 6. Coverage distribution advisory
 
-Venue-family concentration: 7 of 9 sources are ACL-family peer-reviewed venues (ACL/EMNLP/
-COLING) = 78%, exceeding the 70% threshold. This reflects the field's actual publication
+Venue-family concentration: 8 of 10 sources are ACL-family peer-reviewed venues (ACL/EMNLP/
+COLING) = 80%, exceeding the 70% threshold. This reflects the field's actual publication
 pattern for RAG hallucination detection rather than a narrow search — the 2 non-ACL-family
 entries (LettuceDetect, RefChecker) are both arXiv preprints already included. No search
 expansion undertaken; advisory only, non-blocking.
 
 No time-distribution or methodological-distribution skew triggered (sources span
-2023–2025; methods split across encoder/token-level, decoder/DPO, and claim-decomposition
-families).
+2020–2025 after adding Maynez et al.; methods split across encoder/token-level,
+decoder/DPO, claim-decomposition, and human-evaluation families).
