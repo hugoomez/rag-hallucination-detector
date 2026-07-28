@@ -329,7 +329,8 @@ w_t = 0   where label == -100 (context / special / padding)
 Two boundary properties are unit-tested rather than asserted: **λ = 1.0 reduces exactly to
 plain mean cross-entropy** (the default path does not route through the weighted branch, so
 it stays bit-identical to the pre-ACWS model), and **λ = 0.0 is exactly loss-masking**.
-λ = 0 was never run — §5 states why, §8 records it as a limitation.
+λ = 0 was later run, at seed 42 only, as a single-point check on the null — §5.3 reports
+it; §8 records the single-seed caveat that check carries.
 
 What ACWS asks the model to exploit is deliberately partial. The model has no way to
 verify, from context and response text alone, whether an unsupported claim is true —
@@ -573,111 +574,160 @@ is judged against is visible.
 
 ### 5.2 Arm c: ACWS at λ = 0.25
 
-Arm c's numbers are reported from ADR-020: a committed, timestamped decision record written
-under this study's pre-registered rule at the time the arm was run. No prediction dump or
-metrics file was retained for the run, although the tooling to produce one existed and was
-used for its sibling arm — the omission is ours, not a limitation of the setup. Alone among
-the experiments reported here, arm c's figures cannot be independently re-derived without
-retraining, and we mark them as such wherever they appear.
+All three of arm c's seeds now resolve to committed artifacts. Seed 42 and seed 123 were
+recovered via Hub inference after the original run's metrics-save step was lost — training
+was genuine, only the save step failed. Seed 456 is a fresh, full run (RunPod, eager
+attention) with a complete metrics file and prediction dump. No arm in this ablation rests
+solely on a decision record any longer.
 
-Arm c differs from arm b in exactly one parameter, `--implicit_true_weight` 1.0 → 0.25. The
-pre-registered rule's three clauses evaluate as follows:
+Arm c differs from arm b in exactly one parameter, `--implicit_true_weight` 1.0 → 0.25.
+Evaluated on the pre-registered rule, using each arm's mean across its three matched seeds
+(42, 123, 456):
 
-| Clause | Arm b | Arm c *(ADR-020, no artifact)* | Verdict |
-|---|---:|---:|---|
-| `clean_span_f1(c) > clean_span_f1(b)` | 0.5307 | 0.5262 | **FAIL** (−0.0045) |
-| `response_f1(c) > response_f1(b)` | 0.7631 | 0.7633 | pass (+0.0002) |
-| official span-recall loss ≤ flagged char-mass share | — | — | not reached |
+| Clause | Arm b (mean, n=3) | Arm c (mean, n=3) | Δ (c − b) | Verdict |
+|---|---:|---:|---:|---|
+| `clean_span_f1(c) > clean_span_f1(b)` | 0.5308 | 0.5197 | −0.0111 | **FAIL** |
+| `response_f1(c) > response_f1(b)` | 0.7637 | 0.7587 | −0.0050 | **FAIL** |
+| official span-recall drop ≤ noisy char-mass share | — | — | — | not reached |
 
-The first clause fails outright, so the rule rejects arm c and the remaining clauses do not
-matter. Clean-span F1 — the metric the hypothesis is specifically about, with flagged
-intervals removed from both gold and predictions — moved in the wrong direction. The
-response-level gain of 0.0002 is not a countervailing signal at this scale.
+Per seed:
+
+| Seed | clean_span F1 (b) | clean_span F1 (c) | Δ | response F1 (b) | response F1 (c) | Δ |
+|---|---:|---:|---:|---:|---:|---:|
+| 42 | 0.5307 | 0.5171 | −0.0137 | 0.7631 | 0.7623 | −0.0008 |
+| 123 | 0.5281 | 0.5209 | −0.0072 | 0.7637 | 0.7590 | −0.0047 |
+| 456 | 0.5336 | 0.5212 | −0.0125 | 0.7643 | 0.7549 | −0.0094 |
+| **mean** | **0.5308** | **0.5197** | **−0.0111** | **0.7637** | **0.7587** | **−0.0050** |
+| range | 0.0055 | 0.0041 | — | 0.0012 | 0.0074 | — |
+
+*Source: `results/seed_aggregate_arm_c_vs_arm_b.json` (response F1, via
+`scripts/aggregate_seeds.py --base results/arm_b_metrics.json
+results/base_seed123_metrics.json results/base_seed456_metrics.json --large
+results/arm_c_seed42_metrics.json results/arm_c_seed123_metrics.json
+results/arm_c_seed456_metrics.json`) and `results/clean_span_seed_variance_full.json`
+(clean-span F1, via `scripts/ablation_report.py --arm b42=... --arm b123=... --arm
+b456=... --arm c42=... --arm c123=... --arm c456=...`).*
+
+Both clauses fail, on every seed: arm c beats arm b on neither clean-span F1 nor response F1
+at seed 42, 123, or 456 — 0/3 and 0/3. The rule rejects arm c unambiguously.
+
+This supersedes an earlier, weaker reading of the same decision. Before seed 123 and seed
+456 had real artifacts, arm c's numbers resolved only to ADR-020's single-seed record,
+which reported response F1 0.7633 against arm b's 0.7631 — a nominal pass on clause 2, by
++0.0002. The recovered seed-42 artifact does not reproduce that figure: its response F1 is
+0.7623, which fails clause 2 at that seed (−0.0008 against arm b), and its clean-span F1
+(0.5171) is also below ADR-020's originally reported 0.5262 for the same nominal setting — a
+0.0091 gap on the metric the hypothesis is actually about. Response F1 is close between the
+two records (0.7633 vs 0.7623); clean-span F1 is not. We do not know the cause of the
+discrepancy; it is disclosed as an unresolved, non-load-bearing footnote in §8 —
+non-load-bearing because it changes no overall decision. Clause 1 fails under both readings,
+so arm c is rejected either way, and at the 3-seed level clause 2 fails on the mean and on
+every individual seed regardless of which seed-42 reading is used, since even ADR-020's more
+favorable seed-42 figure is dwarfed by seeds 123 and 456's larger, unambiguous losses.
 
 ### 5.3 Reading the null
 
-The immediate question is whether −0.0045 is a result or a fluctuation. §5.2's own
-comparison anchored this against the base recipe's seed-to-seed spread on *official* span
-F1 — a mismatched metric, since the b→c delta itself is on *clean* span F1. These same
-three seeded arm-b runs are also the ModernBERT-base arm of Appendix A's scaling
-comparison — the variance anchor used here and the base arm reported there are the
-identical three training runs, read for two different purposes.
+Two things changed since this section first went to draft: arm c's three seeds are now all
+real, matched one-for-one to arm b's three seeds (§5.2), and a fourth arm — d, λ = 0.0,
+seed 42 — has been run. Between them they close one of the constraints this section used to
+list as open and sharpen a second into something more specific than the flat null originally
+reported here.
 
-A matched-metric anchor is now available, and it replaces the mismatched one. Arm b's
-clean-span F1 across its three real seeds (42, 123, 456) is **0.5307 / 0.5281 / 0.5336** —
-a spread of **0.0055**, computed directly by `scripts/ablation_report.py` from each seed's
-committed prediction dump. Two of arm c's three seeds also have real, committed prediction
-dumps now (`results/arm_c_seed42_preds.json`, `results/arm_c_seed123_preds.json`, recovered
-via Hub inference after the original run's metrics-save step was lost); the third
-(seed 456) does not, and is out of scope here per the deferred RunPod pass. Scored on the
-same matched metric, clean-span F1 for arm c is **0.5171** (seed 42) and **0.5209**
-(seed 123), giving matched b→c deltas of **−0.0136** and **−0.0072** — both negative, both
-several times larger than the 0.0055 seed-only spread, and consistent in direction with
-ADR-020's original single-seed finding. *Source for every figure in this paragraph:
-`results/clean_span_seed_variance.json`, written by
-`scripts/ablation_report.py --arm b42=... --arm b123=... --arm b456=... --arm c42=... --arm c123=...`
-against the five prediction dumps named above and `results/base_seed456_preds.json`.*
+**The λ sweep is now three points, not one.** Read across λ = 1.0 (arm b) → λ = 0.25
+(arm c) → λ = 0.0 (arm d), holding seed 42 fixed for the full three-point comparison (arm d
+has only that seed):
 
-One discrepancy is worth disclosing rather than absorbing. The recovered seed-42 clean-span
-F1 (0.5171) does not match ADR-020's originally reported figure for the same nominal
-setting (0.5262) — a 0.0091 gap, larger than the 0.0055 seed spread it is being compared
-against. Response F1 is close between the two (0.7623 recovered against 0.7633 originally
-reported), so the discrepancy is specific to the span-level metric rather than a wholesale
-mismatch, and we do not know its cause. §5.2's numbers remain sourced to ADR-020, unchanged;
-this is a separate, independently re-derivable computation from the recovered prediction
-dumps, and the two are not claimed to be the same measurement. Reconciling the gap is out of
-scope here and deferred alongside the rest of arm c's re-verification.
+| λ | Arm | clean-span F1 | response F1 |
+|---|---|---:|---:|
+| 1.0 | b (seed 42) | 0.5307 | 0.7631 |
+| 0.25 | c (seed 42) | 0.5171 | 0.7623 |
+| 0.0 | d (seed 42) | **0.5113** | **0.7487** |
 
-With that caveat stated, the matched-metric comparison strengthens rather than weakens
-§5.2's conclusion: on the metric the hypothesis is actually about, arm c's clean-span F1 was
-lower than arm b's at both seeds where a direct comparison is now possible, by margins that
-exceed the base recipe's own seed noise. This is a post-hoc robustness check on the null's
-*direction*, not a re-run of the pre-registered decision rule — that rule's verdict (§5.2)
-still rests on the single seed it was evaluated against, and the four constraints below
-describe that rule's scope, not this supplementary check's.
+Both metrics decline monotonically as λ drops — the direction never reverses across the
+three points. The total move from λ = 1.0 to λ = 0.0 is **−0.0194 clean-span F1** and
+**−0.0144 response F1**, respectively about **3.5×** and **12×** arm b's own three-seed
+noise floor (0.0055 clean-span, 0.0012 response — §5.2). That is not the signature of a flat,
+insensitive model. *Source: `results/clean_span_seed_variance_full.json`, arm `d42`, via
+`scripts/ablation_report.py --arm b42=... --arm c42=... --arm
+d42=results/arm_d_lambda0_seed42_preds.json`.*
 
-Five constraints bound what this null can be read to mean, and none of them is
-recoverable from the data we have.
+**This resolves the confound the earlier draft of this section left open — in neither of the
+two directions it originally offered.** That draft could not distinguish "the model is
+insensitive to this distinction" from "the perturbation falls below the resolution of the
+training process," and named λ = 0 as the run that would separate them. It has now been run,
+and it rules out both:
 
-**One λ, one seed, one architecture.** The result is λ = 0.25, seed 42, ModernBERT-base. No
-sweep followed, and §8 records this as a limitation rather than an oversight: the result was
-not directionally encouraging, so a sweep would have been a search for a value that happened
-to land, with the tuning risk that implies.
+- **Not model insensitivity.** An insensitive model would show flat clean-span and response
+  F1 across λ. Instead both decline monotonically, by margins several times the seed-noise
+  floor established in §5.2. The model is demonstrably sensitive to this intervention.
+- **Not an intervention too small to register.** λ = 0 is not a larger nudge in the same
+  direction as λ = 0.25 — it is the maximum possible strength of this intervention by
+  construction: exact loss-masking, where the flagged tokens contribute nothing to the
+  gradient. If the null at λ = 0.25 reflected an effect too faint to detect, the strongest
+  possible version of the same intervention was the one run capable of surfacing it. It did
+  not surface a benefit. It surfaced a larger cost.
 
-**The intervention is small.** Flagged tokens are roughly 0.7–0.8% of supervised tokens, and
-λ = 0.25 shifts on the order of **0.2% of total loss mass**. This is per-token gradient
-scaling on a thin slice of the objective, not a re-specification of it.
+**What the evidence instead supports, stated as interpretation and not as a new
+pre-registered result:** the model was extracting productive gradient signal from the
+flagged, ungrounded-but-true tokens during training, and down-weighting or masking them
+removes real signal rather than removing noise. This is the opposite of ACWS's premise —
+that these positions were safe to discount because they correlated with a subclass the model
+did not need to learn from — and a monotonic, three-point decline is what a signal-removal
+account predicts and a pure-noise account does not.
 
-**Checkpoint selection is on the wrong metric for what the hypothesis asks.** Arms b and c
-both select checkpoints on token-level F1 (§3.2), which scores flagged tokens the same as
-any other positive; the ACWS hypothesis is specifically about clean-span F1, which does not.
-Down-weighting flagged tokens in the loss shifts the token-F1 landscape across training
-steps, so checkpoint selection on token F1 may discard exactly the checkpoints where ACWS
-would have helped on clean-span F1 — an unresolved confound between what arm c was selected
-for and what it was evaluated on, stated here as acknowledged and not something this paper
-attempts to fix.
+**One caveat applies to the shape of the sweep, not to its endpoints.** Arm d is a single
+seed. The λ = 0.25 → 0.0 step alone (clean-span F1 0.5171 → 0.5113, −0.0058) is the same
+order of magnitude as arm b's own three-seed range (0.0055) — on this evidence alone, that
+specific half-step is not individually distinguishable from seed noise. What clears the
+noise floor unambiguously is the full λ = 1.0 → 0.0 range (−0.0194 against arm b's seed-42
+value specifically, −0.0195 against arm b's three-seed mean), which no plausible account of
+arm b's own seed variance comes close to spanning. The claim rests on the full range and its
+monotonic shape across three points, not on the middle segment considered in isolation.
 
-**The null cannot distinguish two explanations.** It is equally consistent with the model
-being insensitive to this distinction and with the perturbation falling below the resolution
-of the training process. Separating them requires λ = 0 — exact loss-masking, the largest
-version of this intervention — which was never run and is not planned. **The confound
-therefore stays stated and unresolved.** We do not claim the model is robust to the
-distinction; we claim only that this intervention, at this magnitude, did not move the
-metric it targeted.
+Four constraints remain: one resolved outright, one resolved into a different and more
+specific finding than either of its original candidates, and two unchanged.
 
-**Nothing here licenses a general robustness claim.** In particular, this is not evidence
-about a model's tolerance for mislabelled training data, and cannot be — §4 establishes that
-the flagged subclass is not mislabelled. What was tested is whether a real, low-severity
-error subclass can be discounted by simple loss reweighting. At the one setting tested, it
-could not.
+**Resolved: one seed → three seeds, matched.** Arm c's clean-span F1 and response F1 both
+lose to arm b's on every one of three matched seeds (§5.2) — no longer a single-seed result
+subject to that seed's own draw.
 
-The defensible claim, stated exactly: **at λ = 0.25, one seed, one architecture,
-down-weighting the ungrounded-but-true subclass produced no measurable improvement in
-clean-span F1.** A reviewer will reasonably find that thin, and the honest response is that
-the chapter's contribution is not the result but the protocol around it — a decision rule
-fixed in code before the arms ran, a harness validated against published numbers first, and
-a stated inability to distinguish two explanations that a less disciplined write-up could
-have collapsed into one. That, and not the −0.0045, is what §7 carries forward.
+**Resolved, differently than either original candidate predicted: the
+insensitivity/too-small confound.** As above — neither "the model can't tell" nor "we didn't
+push hard enough" survives the λ = 0 run. The null has a specific, monotonic shape that
+neither original account predicts, and only a signal-removal account does.
+
+**Unchanged: the λ grid is still coarse, and one architecture is tested throughout.** Three
+points (0.0, 0.25, 1.0) establish direction and rough magnitude but not the sweep's shape
+between them — whether the decline between λ = 0.25 and λ = 1.0 is linear, front-loaded, or
+back-loaded is not observed, and no intermediate λ was run. ModernBERT-base is the only
+backbone tested.
+
+**Unchanged: checkpoint selection is on the wrong metric for what the hypothesis asks.**
+Arms b, c, and d all select checkpoints on token-level F1 (§3.2), which scores flagged
+tokens the same as any other positive; the ACWS hypothesis is specifically about clean-span
+F1, which does not. This confound is structural — no seed count or λ value resolves it — and
+stays acknowledged, not fixed.
+
+**Unchanged: nothing here licenses a general robustness or mislabelling claim.** This is not
+evidence about a model's tolerance for mislabelled training data, and cannot be — §4
+establishes that the flagged subclass is not mislabelled. What was tested is whether a real,
+low-severity error subclass can be discounted by loss reweighting, at any strength from full
+weight to none. At every strength tested, it could not — and the strongest version of the
+attempt made things worse.
+
+**The null is better supported now than the version of this section originally reported, and
+sharper.** The original claim was: at λ = 0.25, one seed, one architecture, down-weighting
+the ungrounded-but-true subclass produced no measurable improvement in clean-span F1 — a
+result a reviewer could reasonably read as underpowered, resting on a single seed and an
+unresolved confound the paper admitted it could not close. The claim now is: **down-weighting
+the ungrounded-but-true subclass, at every strength tested from λ = 0.25 to λ = 0.0 and
+across three matched seeds at λ = 0.25, never once improved clean-span F1 or response F1
+over the unweighted baseline, and the decline is monotonic in the down-weighting's
+strength.** That is not a weaker null falling short of significance; it is a consistent,
+dose-dependent cost. The chapter's contribution remains the protocol around the result as
+much as the result itself — a decision rule fixed in code before any arm ran, a harness
+validated against published numbers first — but the result it now protects is no longer
+thin. That, and not a single −0.0045, is what §7 carries forward.
 
 ---
 
@@ -928,16 +978,24 @@ future work and note the gap rather than approximate it.
 
 **The training-side null (§5).**
 
-- **One setting only.** λ = 0.25, seed 42, ModernBERT-base. No sweep, no replication.
-- **Arm c has no artifact.** No prediction dump or metrics file was retained; its figures
-  resolve to ADR-020 and cannot be re-derived without retraining the arm. Every other
-  experiment here resolves to a metrics file.
-- **λ = 0 was not run.** This was a decision, not an oversight — the result was not
-  directionally encouraging, so a sweep was declined. The consequence is that the confound
-  below stays open.
-- **The intervention may be below the resolution of training.** Flagged tokens are ~0.7–0.8%
-  of supervised tokens and λ = 0.25 shifts ~0.2% of loss mass, so the null cannot
-  distinguish model insensitivity from an intervention too small to measure.
+- **The λ grid is coarse, and only one architecture is tested.** Three points (λ = 1.0,
+  0.25, 0.0), all on ModernBERT-base. The shape of the decline between these anchors is not
+  observed, and no intermediate λ was run.
+- **Arm d (λ = 0) is a single seed.** The full-range decline (λ = 1.0 → 0.0) clears arm b's
+  three-seed noise floor with room to spare, but the middle segment alone (λ = 0.25 → 0.0)
+  does not exceed that floor on the single-seed evidence available, and arm d's own
+  seed-to-seed variance is unmeasured. §5.3 states this caveat in full.
+- **An unresolved discrepancy between ADR-020's original arm-c seed-42 record and the
+  recovered artifact.** ADR-020 originally reported response F1 0.7633 and clean-span F1
+  0.5262 for arm c at seed 42; the artifact recovered via Hub inference gives 0.7623 and
+  0.5171 for the same nominal run. Response F1 is close (a 0.0010 gap); clean-span F1 is not
+  (a 0.0091 gap, larger than arm b's own three-seed spread of 0.0055). The cause is unknown
+  and was not investigated. Disclosed here as non-load-bearing: both readings place arm c
+  below arm b on clean-span F1, and §5.2's 3-seed mean rejects arm c on both decision-rule
+  clauses regardless of which seed-42 reading is used.
+- **Checkpoint selection is on the wrong metric for what the hypothesis asks** (§5.3). Arms
+  b, c, and d all select checkpoints on token-level F1, not clean-span F1. This is structural
+  and unaffected by seed count or λ.
 
 **The arm-b comparison (§5.1, §7.3).**
 
@@ -963,6 +1021,10 @@ future work and note the gap rather than approximate it.
   whose preprocessing is publicly inspectable.
 
 **The scaling replication (Appendix A) and the variance anchor.**
+
+The base arm of this comparison is three fully matched, artifact-backed seeds (the same
+three arm-b runs used throughout §5); the caveats below are specific to the large-backbone
+side.
 
 - **E10's epoch cap is not uniform.** Seed 42 ran at 6 epochs, seeds 123 and 456 at 4; seed
   123 selected its final epoch and may not have converged. The sweep is "seed, with a
@@ -999,13 +1061,16 @@ enumerated test split, computed from the released corpus and carrying no confide
 interval, because nothing is being estimated. Neither depends on any model, and both hold
 before a detector is trained.
 
-We also tested whether the same conflation could be exploited at training time. Down-weighting
-the ungrounded-but-true subclass in the loss at λ = 0.25, under a decision rule fixed in
-code before the arms ran, produced no measurable improvement in clean-span F1 — at one λ,
-one seed, one architecture, with an intervention touching roughly 0.2% of loss mass and a
-confound we could not resolve because λ = 0 was never run. This is a negative result,
-narrower and weaker than the finding it sits beside, and we claim it as such rather than as
-a second leg.
+We also tested whether the same conflation could be exploited at training time.
+Down-weighting the ungrounded-but-true subclass in the loss, under a decision rule fixed in
+code before the arms ran, never improved clean-span F1 or response F1 over the unweighted
+baseline — not at λ = 0.25 across three matched seeds, and not at λ = 0.0, the maximal
+version of the intervention, which instead produced a larger, monotonic decline. That
+dose-response rules out both candidate readings of an earlier, thinner version of this
+result: the model is not insensitive to the intervention, and the intervention was not too
+small to register. This remains a negative result, narrower than the finding it sits beside,
+and we claim it as such rather than as a second leg — but it is a specific, dose-dependent
+negative result now, not an underpowered one.
 
 The evaluation-time bound and the training-time null are not in tension, for the reason
 §7.1 gives: the same quantity that is too small to steer a training process (0.2% of loss
@@ -1031,24 +1096,27 @@ All code, configuration, and result artifacts for this project are in a public
 repository: https://github.com/hugoomez/rag-hallucination-detector.
 
 Every quantitative result reported in this paper resolves to a committed artifact in that
-repository — a metrics file, a prediction dump, or a decision record — with **one named
-exception**. Arm c (§5.2, ACWS at λ = 0.25) resolves only to ADR-020, a committed,
-timestamped decision record written under this study's pre-registered rule at the time
-the arm was run; no prediction dump or metrics file was retained, and its figures cannot
-be independently re-derived without retraining. This is the paper's one open
-reproducibility gap. It is disclosed wherever arm c's numbers appear (§5.2, §8) and not
-only here; regenerating the missing artifact by retraining under the same recipe is
-planned as a follow-up, tracked internally as Fase D, and is independent of every other
-result in this paper.
+repository — a metrics file and, for every arm used in a per-seed or matched comparison, a
+prediction dump. Arm c's three seeds (42, 123, 456) and arm d's seed 42 all resolve to
+committed metrics files and prediction dumps under `results/`; arm c's seeds 42 and 123 were
+recovered via Hub inference after the original run's metrics-save step was lost, and are
+disclosed as such wherever they are used (§5.2), but they are independently re-derivable
+from the released checkpoints, not sourced to a decision record. ADR-020 remains the
+timestamped record of arm c's original single-seed evaluation and is cited in §5.2 as the
+earlier reading superseded by the recovered and newly run artifacts; a small, unexplained
+discrepancy between that original record and the recovered seed-42 artifact is disclosed in
+§8 and does not affect any claim in this paper (§5.2).
 
-Arm a's metrics file, arm b's metrics and prediction dump, the E10 three-seed variance
-anchor, and Appendix A's scaling comparison for large seeds 42 and 456 are all committed
-under `results/`. Arm a has no committed prediction dump — the harness used one to
-reproduce arm a's published numbers at run time (§3.2), but it was not retained — so
-arm a's per-row predictions are not independently re-derivable from this repository.
-Appendix A's own two partial gaps — large seed 123's predictions were not dumped and its
-checkpoint was not published to the Hub — are disclosed in §8 and do not affect any claim
-in the paper's main argument (§4–§7), which Appendix A is explicitly severable from.
+Arm a's metrics file, arm b's metrics and prediction dumps for all three seeds, arm c's
+metrics and prediction dumps for all three seeds, arm d's metrics and prediction dump, the
+E10 three-seed variance anchor, and Appendix A's scaling comparison for large seeds 42 and
+456 are all committed under `results/`. Arm a has no committed prediction dump — the harness
+used one to reproduce arm a's published numbers at run time (§3.2), but it was not
+retained — so arm a's per-row predictions are not independently re-derivable from this
+repository. Appendix A's own two partial gaps — large seed 123's predictions were not
+dumped and its checkpoint was not published to the Hub — are disclosed in §8 and do not
+affect any claim in the paper's main argument (§4–§7), which Appendix A is explicitly
+severable from.
 
 The annotation audit underlying §3.1 and §4 is a direct, standard-library computation over
 the released RAGTruth corpus, reproduced in full as Supplement S1
@@ -1115,7 +1183,12 @@ because it supports anything else here.
 **What was run.** A three-seed comparison between ModernBERT-base and ModernBERT-large
 under arm b's recipe, intended as matched: the same seed should mean the same
 weight-initialization draw and data shuffle, so the backbone is the only difference. That
-intent is verifiable for two of the three seeds. Seeds 42 and 456 have full, recorded
+intent is verifiable for two of the three seeds. This asymmetry sits entirely on the
+large-backbone side: the base arm itself is not in question. All three base seeds (42, 123,
+456) have full, recorded hyperparameters and real, committed prediction dumps — the same
+three runs now serving as §5.2's matched arm-b anchor and §5.3's noise floor — so the
+verified-vs-unrecorded split below describes only which large-backbone seeds can be
+confirmed to match that base, not any gap in the base arm. Seeds 42 and 456 have full, recorded
 hyperparameters on both backbones and match on every axis (learning rate, epochs,
 checkpoint-selection metric, `implicit_true_weight`) other than backbone size — **2
 verified matched seeds**. Seed 123's large-backbone run was produced by the existing-model

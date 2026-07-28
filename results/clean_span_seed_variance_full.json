@@ -1,0 +1,489 @@
+{
+  "arms": {
+    "b42": {
+      "official": {
+        "span_char_level": {
+          "precision": 0.6474077808587514,
+          "recall": 0.45170897578706687,
+          "f1": 0.5321361972511914
+        },
+        "response_level": {
+          "accuracy": 0.8477777777777777,
+          "precision": 0.8358585858585859,
+          "recall": 0.7020148462354189,
+          "f1": 0.7631123919308357
+        }
+      },
+      "clean_span": {
+        "precision": 0.6281942229310651,
+        "recall": 0.45943388890328934,
+        "f1": 0.5307213222744558
+      },
+      "noisy_recall_only": {
+        "recall": 0.3913867138166204,
+        "gold_char_mass": 7918,
+        "overlap_char_mass": 3099
+      },
+      "by_task_severity": {
+        "Data2txt": {
+          "Evident": {
+            "recall": 0.4942389326864767,
+            "gold_char_mass": 32980,
+            "overlap_char_mass": 16300
+          },
+          "Subtle": {
+            "recall": 0.2777101096224117,
+            "gold_char_mass": 3284,
+            "overlap_char_mass": 912
+          }
+        },
+        "QA": {
+          "Evident": {
+            "recall": 0.5810288892321953,
+            "gold_char_mass": 25892,
+            "overlap_char_mass": 15044
+          },
+          "Subtle": {
+            "recall": 0.46335078534031415,
+            "gold_char_mass": 5730,
+            "overlap_char_mass": 2655
+          }
+        },
+        "Summary": {
+          "Evident": {
+            "recall": 0.21957671957671956,
+            "gold_char_mass": 16632,
+            "overlap_char_mass": 3652
+          },
+          "Subtle": {
+            "recall": 0.08977189109639441,
+            "gold_char_mass": 1359,
+            "overlap_char_mass": 122
+          }
+        }
+      },
+      "response_precision": {
+        "precision": 0.8358585858585859,
+        "false_positive_rate_faithful": 0.07398975526465566,
+        "n_faithful": 1757,
+        "n_false_positive": 130
+      }
+    },
+    "b123": {
+      "official": {
+        "span_char_level": {
+          "precision": 0.6442288490980497,
+          "recall": 0.4539250747493698,
+          "f1": 0.5325876858099975
+        },
+        "response_level": {
+          "accuracy": 0.8455555555555555,
+          "precision": 0.8199513381995134,
+          "recall": 0.7147401908801697,
+          "f1": 0.7637393767705383
+        }
+      },
+      "clean_span": {
+        "precision": 0.6231646484409427,
+        "recall": 0.4582026491096192,
+        "f1": 0.5281012166613139
+      },
+      "noisy_recall_only": {
+        "recall": 0.42422328870927,
+        "gold_char_mass": 7918,
+        "overlap_char_mass": 3359
+      },
+      "by_task_severity": {
+        "Data2txt": {
+          "Evident": {
+            "recall": 0.5291388720436628,
+            "gold_char_mass": 32980,
+            "overlap_char_mass": 17451
+          },
+          "Subtle": {
+            "recall": 0.28867235079171744,
+            "gold_char_mass": 3284,
+            "overlap_char_mass": 948
+          }
+        },
+        "QA": {
+          "Evident": {
+            "recall": 0.5386219681754982,
+            "gold_char_mass": 25892,
+            "overlap_char_mass": 13946
+          },
+          "Subtle": {
+            "recall": 0.46108202443280977,
+            "gold_char_mass": 5730,
+            "overlap_char_mass": 2642
+          }
+        },
+        "Summary": {
+          "Evident": {
+            "recall": 0.21705146705146705,
+            "gold_char_mass": 16632,
+            "overlap_char_mass": 3610
+          },
+          "Subtle": {
+            "recall": 0.18910963944076528,
+            "gold_char_mass": 1359,
+            "overlap_char_mass": 257
+          }
+        }
+      },
+      "response_precision": {
+        "precision": 0.8199513381995134,
+        "false_positive_rate_faithful": 0.0842344906089926,
+        "n_faithful": 1757,
+        "n_false_positive": 148
+      }
+    },
+    "b456": {
+      "official": {
+        "span_char_level": {
+          "precision": 0.6458510833792747,
+          "recall": 0.45330362900861815,
+          "f1": 0.5327123408477098
+        },
+        "response_level": {
+          "accuracy": 0.8455555555555555,
+          "precision": 0.8184019370460048,
+          "recall": 0.7168610816542949,
+          "f1": 0.7642736009044658
+        }
+      },
+      "clean_span": {
+        "precision": 0.6280420402505571,
+        "recall": 0.46390523341714407,
+        "f1": 0.5336374682261035
+      },
+      "noisy_recall_only": {
+        "recall": 0.36499115938368276,
+        "gold_char_mass": 7918,
+        "overlap_char_mass": 2890
+      },
+      "by_task_severity": {
+        "Data2txt": {
+          "Evident": {
+            "recall": 0.515130382049727,
+            "gold_char_mass": 32980,
+            "overlap_char_mass": 16989
+          },
+          "Subtle": {
+            "recall": 0.2566991473812424,
+            "gold_char_mass": 3284,
+            "overlap_char_mass": 843
+          }
+        },
+        "QA": {
+          "Evident": {
+            "recall": 0.5702533601112313,
+            "gold_char_mass": 25892,
+            "overlap_char_mass": 14765
+          },
+          "Subtle": {
+            "recall": 0.4155322862129145,
+            "gold_char_mass": 5730,
+            "overlap_char_mass": 2381
+          }
+        },
+        "Summary": {
+          "Evident": {
+            "recall": 0.22041847041847043,
+            "gold_char_mass": 16632,
+            "overlap_char_mass": 3666
+          },
+          "Subtle": {
+            "recall": 0.13318616629874908,
+            "gold_char_mass": 1359,
+            "overlap_char_mass": 181
+          }
+        }
+      },
+      "response_precision": {
+        "precision": 0.8184019370460048,
+        "false_positive_rate_faithful": 0.08537279453614115,
+        "n_faithful": 1757,
+        "n_false_positive": 150
+      }
+    },
+    "c42": {
+      "official": {
+        "span_char_level": {
+          "precision": 0.6232923497267759,
+          "recall": 0.4493756229114147,
+          "f1": 0.522235015977053
+        },
+        "response_level": {
+          "accuracy": 0.8403703703703703,
+          "precision": 0.7942528735632184,
+          "recall": 0.7327677624602333,
+          "f1": 0.7622724765581909
+        }
+      },
+      "clean_span": {
+        "precision": 0.6016132915964363,
+        "recall": 0.4533424920293424,
+        "f1": 0.5170583887657059
+      },
+      "noisy_recall_only": {
+        "recall": 0.42561252841626673,
+        "gold_char_mass": 7918,
+        "overlap_char_mass": 3370
+      },
+      "by_task_severity": {
+        "Data2txt": {
+          "Evident": {
+            "recall": 0.534445118253487,
+            "gold_char_mass": 32980,
+            "overlap_char_mass": 17626
+          },
+          "Subtle": {
+            "recall": 0.32490864799025576,
+            "gold_char_mass": 3284,
+            "overlap_char_mass": 1067
+          }
+        },
+        "QA": {
+          "Evident": {
+            "recall": 0.5332148926309285,
+            "gold_char_mass": 25892,
+            "overlap_char_mass": 13806
+          },
+          "Subtle": {
+            "recall": 0.49965095986038394,
+            "gold_char_mass": 5730,
+            "overlap_char_mass": 2863
+          }
+        },
+        "Summary": {
+          "Evident": {
+            "recall": 0.18211880711880712,
+            "gold_char_mass": 16632,
+            "overlap_char_mass": 3029
+          },
+          "Subtle": {
+            "recall": 0.0728476821192053,
+            "gold_char_mass": 1359,
+            "overlap_char_mass": 99
+          }
+        }
+      },
+      "response_precision": {
+        "precision": 0.7942528735632184,
+        "false_positive_rate_faithful": 0.10187820147979511,
+        "n_faithful": 1757,
+        "n_false_positive": 179
+      }
+    },
+    "c123": {
+      "official": {
+        "span_char_level": {
+          "precision": 0.6067014261616317,
+          "recall": 0.4638916573840652,
+          "f1": 0.525771620319612
+        },
+        "response_level": {
+          "accuracy": 0.837037037037037,
+          "precision": 0.7848244620611552,
+          "recall": 0.7348886532343585,
+          "f1": 0.7590361445783133
+        }
+      },
+      "clean_span": {
+        "precision": 0.5853757113295396,
+        "recall": 0.4692838072526504,
+        "f1": 0.5209403369444804
+      },
+      "noisy_recall_only": {
+        "recall": 0.4266228845668098,
+        "gold_char_mass": 7918,
+        "overlap_char_mass": 3378
+      },
+      "by_task_severity": {
+        "Data2txt": {
+          "Evident": {
+            "recall": 0.5466343238326258,
+            "gold_char_mass": 32980,
+            "overlap_char_mass": 18028
+          },
+          "Subtle": {
+            "recall": 0.341047503045067,
+            "gold_char_mass": 3284,
+            "overlap_char_mass": 1120
+          }
+        },
+        "QA": {
+          "Evident": {
+            "recall": 0.5297002935269581,
+            "gold_char_mass": 25892,
+            "overlap_char_mass": 13715
+          },
+          "Subtle": {
+            "recall": 0.45776614310645725,
+            "gold_char_mass": 5730,
+            "overlap_char_mass": 2623
+          }
+        },
+        "Summary": {
+          "Evident": {
+            "recall": 0.24392736892736894,
+            "gold_char_mass": 16632,
+            "overlap_char_mass": 4057
+          },
+          "Subtle": {
+            "recall": 0.1346578366445916,
+            "gold_char_mass": 1359,
+            "overlap_char_mass": 183
+          }
+        }
+      },
+      "response_precision": {
+        "precision": 0.7848244620611552,
+        "false_positive_rate_faithful": 0.10813887307911212,
+        "n_faithful": 1757,
+        "n_false_positive": 190
+      }
+    },
+    "c456": {
+      "official": {
+        "span_char_level": {
+          "precision": 0.5962459355601537,
+          "recall": 0.47302573723398017,
+          "f1": 0.5275360423681716
+        },
+        "response_level": {
+          "accuracy": 0.8325925925925926,
+          "precision": 0.7724750277469479,
+          "recall": 0.7380699893955461,
+          "f1": 0.754880694143167
+        }
+      },
+      "clean_span": {
+        "precision": 0.5740812921935172,
+        "recall": 0.4772155836076622,
+        "f1": 0.5211858708960558
+      },
+      "noisy_recall_only": {
+        "recall": 0.4477140692093963,
+        "gold_char_mass": 7918,
+        "overlap_char_mass": 3545
+      },
+      "by_task_severity": {
+        "Data2txt": {
+          "Evident": {
+            "recall": 0.5283201940570043,
+            "gold_char_mass": 32980,
+            "overlap_char_mass": 17424
+          },
+          "Subtle": {
+            "recall": 0.32064555420219243,
+            "gold_char_mass": 3284,
+            "overlap_char_mass": 1053
+          }
+        },
+        "QA": {
+          "Evident": {
+            "recall": 0.5890622586126989,
+            "gold_char_mass": 25892,
+            "overlap_char_mass": 15252
+          },
+          "Subtle": {
+            "recall": 0.4642233856893543,
+            "gold_char_mass": 5730,
+            "overlap_char_mass": 2660
+          }
+        },
+        "Summary": {
+          "Evident": {
+            "recall": 0.22775372775372776,
+            "gold_char_mass": 16632,
+            "overlap_char_mass": 3788
+          },
+          "Subtle": {
+            "recall": 0.22148638704930096,
+            "gold_char_mass": 1359,
+            "overlap_char_mass": 301
+          }
+        }
+      },
+      "response_precision": {
+        "precision": 0.7724750277469479,
+        "false_positive_rate_faithful": 0.11667615253272624,
+        "n_faithful": 1757,
+        "n_false_positive": 205
+      }
+    },
+    "d42": {
+      "official": {
+        "span_char_level": {
+          "precision": 0.6333344713393192,
+          "recall": 0.43503546930878817,
+          "f1": 0.5157819374839261
+        },
+        "response_level": {
+          "accuracy": 0.8344444444444444,
+          "precision": 0.7966507177033493,
+          "recall": 0.7062566277836692,
+          "f1": 0.7487352445193929
+        }
+      },
+      "clean_span": {
+        "precision": 0.6119872107516393,
+        "recall": 0.43908603126053036,
+        "f1": 0.5113155293283126
+      },
+      "noisy_recall_only": {
+        "recall": 0.4100783026016671,
+        "gold_char_mass": 7918,
+        "overlap_char_mass": 3247
+      },
+      "by_task_severity": {
+        "Data2txt": {
+          "Evident": {
+            "recall": 0.4939963614311704,
+            "gold_char_mass": 32980,
+            "overlap_char_mass": 16292
+          },
+          "Subtle": {
+            "recall": 0.28806333739342266,
+            "gold_char_mass": 3284,
+            "overlap_char_mass": 946
+          }
+        },
+        "QA": {
+          "Evident": {
+            "recall": 0.5454966785107369,
+            "gold_char_mass": 25892,
+            "overlap_char_mass": 14124
+          },
+          "Subtle": {
+            "recall": 0.5109947643979058,
+            "gold_char_mass": 5730,
+            "overlap_char_mass": 2928
+          }
+        },
+        "Summary": {
+          "Evident": {
+            "recall": 0.17334054834054835,
+            "gold_char_mass": 16632,
+            "overlap_char_mass": 2883
+          },
+          "Subtle": {
+            "recall": 0.06254598969830757,
+            "gold_char_mass": 1359,
+            "overlap_char_mass": 85
+          }
+        }
+      },
+      "response_precision": {
+        "precision": 0.7966507177033493,
+        "false_positive_rate_faithful": 0.09675583380762663,
+        "n_faithful": 1757,
+        "n_false_positive": 170
+      }
+    }
+  },
+  "noisy_char_mass_share": 0.09557366477106173,
+  "decision": null
+}
