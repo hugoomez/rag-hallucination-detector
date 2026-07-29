@@ -12,6 +12,21 @@ per-response score.
 See [Architecture](#architecture) for how the pieces fit together, and
 [Run the demo locally with Docker](#run-the-demo-locally-with-docker-phase-6) to try it.
 
+## Paper
+
+This repo is also the code and data companion to a research paper built on the
+Track B work above: **["Two Kinds of Hallucination, One Positive Class: A Concentrated
+Conflation in RAGTruth"](docs/research/08-paper-draft.md)**. RAGTruth scores its gold
+hallucination class as a single, undifferentiated positive, but the benchmark's own
+annotators mark a real severity distinction inside it that every public evaluation
+discards — concentrated in one span type (73.64% of "Subtle Baseless Info" spans),
+not scattered annotator noise. We also test whether this structured conflation can be
+exploited at training time by down-weighting the low-severity subclass in the loss;
+across three tested magnitudes it produced a monotonic *decline* in F1 rather than an
+improvement — a pre-registered negative result reported as one (see
+[ADR-020](docs/decisions.md#adr-020-acws-ablation-results--recipe-fix-arm-b-adopted-noise-down-weighting-arm-c-rejected)).
+*(DOI to be added once the paper is minted on Zenodo.)*
+
 ## Setup
 
 ```bash
@@ -108,9 +123,12 @@ models per prediction instead of one is a complexity/latency tradeoff not judged
 worthwhile here (see ADR-017's Status note); the demo runs Track B alone.
 
 > **TODO:** this ensemble analysis (F1 0.7701) was measured against arm-a's Track B
-> predictions and has not been re-run against arm-b; treated as a known, visible gap
-> pending full re-analysis after the upcoming ModernBERT-large experiment (see
-> [ADR-020](docs/decisions.md)), not a silent inconsistency.
+> predictions and has not been re-run against arm-b, the model actually deployed since
+> [ADR-020](docs/decisions.md). The ModernBERT-large scaling comparison this was
+> previously deferred behind ([ADR-021](docs/decisions.md#adr-021-3-seed-matched-scaling-comparison----modernbert-large-adopted-for-reporting))
+> is now complete and did not change the deployment decision — arm-b remains deployed,
+> large is reporting-only — so this re-analysis is a known, visible gap with nothing
+> left blocking it, not a silent inconsistency.
 
 Fine-tuned models: [hugoomezz/deberta-v3-ragtruth-hallucination](https://huggingface.co/hugoomezz/deberta-v3-ragtruth-hallucination)
 (Track A), [hugoomezz/modernbert-ragtruth-response-level](https://huggingface.co/hugoomezz/modernbert-ragtruth-response-level)
@@ -231,8 +249,11 @@ Two illustrative cases from the notebook (gold-annotated hallucinated spans mark
 
 > **TODO:** these qualitative examples (and the live-demo transcripts and paraphrase
 > false positive further below) were generated against arm-a's weights and have not
-> been re-run against arm-b; treated as a known, visible gap pending full re-analysis
-> after the upcoming ModernBERT-large experiment, not a silent inconsistency.
+> been re-run against arm-b, the model actually deployed since ADR-020. This is the
+> same outstanding re-analysis gap noted above — the ModernBERT-large experiment it
+> was previously deferred behind ([ADR-021](docs/decisions.md#adr-021-3-seed-matched-scaling-comparison----modernbert-large-adopted-for-reporting))
+> is complete and did not change the deployment decision, so nothing is left blocking
+> it; it is a known, visible gap, not a silent inconsistency.
 
 **Caught — true positive at y_score 1.00** (QA, llama-2-70b-chat, gold: Evident +
 Subtle Baseless Info). Asked *"how to plan a trip to germany"* over passages about

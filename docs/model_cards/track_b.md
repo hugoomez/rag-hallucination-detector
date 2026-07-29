@@ -126,10 +126,12 @@ rejected as a tested negative result — see the ADR for both arms' full numbers
   can occasionally over-flag on close paraphrases.
 - **TODO (visible, not silent):** this project's README contains qualitative examples
   (error-analysis case studies, live-demo transcripts) and an ADR-017 ensemble analysis
-  (F1 0.7701) that still reference arm-a's predictions/weights, not arm-b's. Full
-  re-analysis is deferred until after the upcoming ModernBERT-large experiment
-  concludes, to avoid redoing this work twice if that experiment supersedes Track B
-  again.
+  (F1 0.7701) that still reference arm-a's predictions/weights, not arm-b's. This
+  re-analysis was deferred pending the ModernBERT-large scaling comparison
+  ([ADR-021](../decisions.md#adr-021-3-seed-matched-scaling-comparison----modernbert-large-adopted-for-reporting)),
+  in case that experiment superseded Track B for deployment. It concluded without doing
+  so — arm-b (this model) remains deployed, large is reporting-only — so the deferral
+  condition has resolved and the re-analysis is simply outstanding, not blocked.
 - **The decision threshold is a product tradeoff, not a fixed answer**: F1 is nearly
   flat across thresholds 0.2–0.7, so the same checkpoint can be run as a high-precision
   "block" mode (t=0.9: precision 0.879, recall 0.602) or a high-recall "warn" mode

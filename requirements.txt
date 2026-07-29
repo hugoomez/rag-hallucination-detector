@@ -22,7 +22,7 @@ gradio>=5,<6  # Step 6.2 demo UI. Floor 5: gradio 4.x uses the old starlette
               # starlette. Cap <6: gradio 6.x forces huggingface-hub>=1.0, which conflicts
               # with transformers' huggingface-hub<1.0 pin.
 
-# Datos y análisis
+# Data & analysis
 pandas>=2.0
 numpy>=1.26
 scikit-learn>=1.4
@@ -34,7 +34,7 @@ nltk>=3.9
 jupyter
 ipykernel
 
-# Utilidades
+# Utilities
 python-dotenv>=1.0
 huggingface_hub>=0.24
 requests>=2.32
