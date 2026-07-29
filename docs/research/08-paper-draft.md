@@ -1283,6 +1283,26 @@ discover: `results/finetuned_track_b_token_level_metrics.json` is a byte-identic
 documents cite the duplicate; `arm_a_original_metrics.json` and `arm_b_metrics.json` are the
 two files this paper treats as canonical for the arm-a/arm-b comparison in §5.1.
 
+## AI Disclosure Statement
+
+AI (Claude, via Claude Code) was used throughout this project — for literature search and
+citation verification, code implementation, drafting, and iterative revision. Three Claude
+model generations were used over the project's life (Opus 4.8, Sonnet 5, Fable 5), so no
+single-model attribution would be accurate. Every methodological decision — what to test,
+which arm to adopt, how to score a result, whether a finding was strong enough to report —
+was made by the author, who reviewed all AI-assisted output and takes full responsibility for
+every claim in this paper.
+
+AI assistance included a running verification practice, not just drafting: claims were
+checked against raw data, primary sources, or committed artifacts (`results/`, `scripts/`,
+`docs/decisions.md`) before being stated in the paper, and corrections were logged rather
+than silently rewritten. The terminology correction from "label noise" to "label-class
+conflation" applied throughout, for instance, traces to a pre-drafting terminology sweep
+recorded in the project's own planning documents, not asserted without a paper trail.
+
+All results reported in this paper are from real, independently-reproducible runs, per the
+artifacts listed in the preceding section.
+
 ## References
 
 Belyi, M., Friel, R., Shao, S., & Sanyal, A. (2024/2025). Luna: An evaluation foundation
