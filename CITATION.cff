@@ -1,0 +1,39 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite it as below."
+title: "Two Kinds of Hallucination, One Positive Class: A Concentrated Conflation in RAGTruth"
+authors:
+  - family-names: "Gómez García"
+    given-names: "Hugo"
+    orcid: "https://orcid.org/0009-0003-4137-1705"
+    email: "gomezgarciahu@gmail.com"
+version: 1.0.0
+date-released: 2026-07-29
+url: "https://github.com/hugoomez/rag-hallucination-detector"
+abstract: >-
+  Every RAGTruth (Niu et al., 2024) evaluation whose preprocessing is
+  publicly inspectable scores its gold hallucination class as a single,
+  undifferentiated positive: a span is hallucinated or it is not. The
+  benchmark's own annotators mark a distinction that both such evaluations
+  discard. The implicit_true field records spans that are unsupported by
+  the retrieved context but happen to be true -- 13.5% of gold spans by
+  count, 14.56% by character mass -- and marks them, in 90.6% of cases,
+  with the annotators' own low-intensity severity prefix, against 4.4% for
+  other gold spans. The conflation is not a scattering of annotator
+  disagreement: it concentrates in one span type -- 73.64% of spans typed
+  "Subtle Baseless Info" are themselves the low-intensity,
+  ungrounded-but-true subclass -- the structure of a real, recognized
+  subclass rather than of noise. We quantify what this structured conflation costs under
+  RAGTruth's official scoring, and test whether it can be exploited at
+  training time by down-weighting the low-intensity subclass in the loss
+  under a pre-registered decision rule; across three tested magnitudes it
+  produced a monotonic, dose-dependent decline in F1 rather than an
+  improvement, a negative result we report as one. We report this as a
+  benchmark-quality contribution, not a detection method.
+keywords:
+  - RAGTruth
+  - hallucination detection
+  - retrieval-augmented generation
+  - benchmark evaluation
+  - label-class conflation
+  - annotation metadata
+license: MIT
