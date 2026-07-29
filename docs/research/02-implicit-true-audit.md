@@ -101,15 +101,33 @@ RAGTruth score aggregates together with ungrounded-and-false content.
 
 ### 2.2 The field has no literature
 
-`implicit_true` was added to the **data**, not the paper. RAGTruth's README dates it to
-**February 2024**; the ACL 2024 paper (Niu et al., arXiv:2401.00396) **does not mention it
-anywhere** — checked 2026-07-25. The field is documented only in the corpus README.
+The field this audit covers was named and discussed in the **paper**, not only added to the
+data. RAGTruth's corpus README dates the field to February 2024; the ACL paper (Niu et al.,
+arXiv:2401.00396, §3.4 "Annotations for Adaptive Evaluation" and its "Implicit Truth"
+subsection) discusses the concept by name and reports per-task, per-model `implicit_true`
+span counts in Table 10 — checked against the full text on 2026-07-25. What the paper does
+not do, and what no source in this review found any system doing, is report a **detection
+metric** — precision, recall, or F1 — conditioned on the field. The distinction this audit
+turns on is discussed-and-counted versus scored-on, not mentioned versus unmentioned, and the
+claim above is scoped to that: no published RAGTruth evaluation conditions its detection
+metric on `implicit_true`.
 
-There is, however, a **direct precedent for metadata-conditioned scoring by the benchmark's
-own authors**: the RAGTruth paper offers users an option to include or exclude
-`due_to_null` spans when evaluating. The authors built exactly this affordance for one
-metadata field and not for the other. That precedent is the strongest available support
-for treating `implicit_true` the same way.
+`due_to_null` receives the same treatment in the same paper section, and is worth reading
+alongside it rather than as a separate, stronger precedent than it is. §3.4's general
+framing — annotations of this kind "enable users to adopt various evaluation strategies
+tailored to their specific application circumstances" — covers `implicit_true` and
+`due_to_null` under one heading, not `due_to_null` alone; this review found no sentence in
+the paper, its appendices, or the vendored baseline code that implements an include/exclude
+scoring toggle for either field specifically. The `due_to_null` subsection instead states
+that the authors' own subsequent detection prompts "will be aligned with this standard" —
+i.e., `due_to_null` spans are included as hallucinations in their own experiments, not
+optionally excluded. What this project proposes for `implicit_true` — report the metric
+stratified, so a reader can see which subclass a number is about — is therefore not a
+request to extend an existing, implemented precedent from one field to the other. It is
+consistent with the stated intent of RAGTruth's own "Adaptive Evaluation" framing for
+annotations of this kind, applied to a field that framing already names but that no
+published evaluation, including the benchmark's own, operationalizes. See
+`08-paper-draft.md` §2.4 for this passage's counterpart in the main text.
 
 ### 2.3 Where the flag concentrates: the "Subtle" category
 
@@ -353,8 +371,8 @@ The docstring's stated expectation ("~13.5% ... and ~605") should be read as 14.
 | §2.1(a) `implicit_true` definition | `data/raw/ragtruth/README.md`, response.jsonl field table — quoted verbatim |
 | §2.1(b) annotator `meta` comments | Sampled 2026-07-25 from `data/raw/ragtruth/dataset/response.jsonl` (1,846 of 1,928 flagged spans carry one) |
 | §2.1(c) severity distribution (90.6% / 4.4%) | Computed 2026-07-25 via §5's `severity()` snippet |
-| §2.2 field absent from the ACL paper; added Feb 2024 | `data/raw/ragtruth/README.md` Updates §2; full-text check of arXiv:2401.00396, 2026-07-25 — no occurrence |
-| §2.2 `due_to_null` include/exclude precedent | RAGTruth paper (Niu et al., ACL 2024), evaluation §; checked 2026-07-25 |
+| §2.2 field named in README (Feb 2024) and discussed by name in the ACL paper (§3.4 "Implicit Truth", Table 10), but never scored on | `data/raw/ragtruth/README.md` Updates §2; full-text check of arXiv:2401.00396, 2026-07-25 |
+| §2.2 no include/exclude scoring toggle found for either `implicit_true` or `due_to_null` | Full-text check of arXiv:2401.00396 + vendored baseline code, 2026-07-25 |
 | 9.49% test flagged char mass, 90.5% / 94.8% bounds | Computed 2026-07-25 from the §3 character-mass table |
 | LettuceDetect uses all spans unfiltered | Their `preprocess_ragtruth.py` on GitHub — checked 2026-07-12, **re-verified 2026-07-25** |
 | RAGTruth's own baseline ignores the field | `data/raw/ragtruth/baseline/` (vendored): zero occurrences of `implicit_true`/`due_to_null`; `prepare_dataset.py:16–22`, `predict_and_evaluate.py:85`. Checked 2026-07-25 |

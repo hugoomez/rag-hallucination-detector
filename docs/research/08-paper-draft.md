@@ -7,25 +7,29 @@ structure and word budgets. Venue undecided.*
 
 ## Abstract
 
-Every published evaluation on RAGTruth (Niu et al., 2024) scores its gold hallucination
-class as a single, undifferentiated positive: a span is hallucinated or it is not. The
-benchmark's own annotators mark a distinction that every public evaluation discards. The
+Every RAGTruth (Niu et al., 2024) evaluation whose preprocessing is publicly inspectable
+scores its gold hallucination class as a single, undifferentiated positive: a span is
+hallucinated or it is not. The benchmark's own annotators mark a distinction that both such
+evaluations discard. The
 `implicit_true` field records spans that are unsupported by the retrieved context but
 happen to be true — 13.5% of gold spans by count, 14.56% by character mass — and marks
 them, in 90.6% of cases, with the annotators' own low-intensity severity prefix, against
 4.4% for other gold spans. These two subclasses are marked as differing in severity by the
 benchmark's own annotators, and are nonetheless scored identically. The conflation is not a
-scattering of annotator disagreement: it concentrates in one span type — nearly three
-quarters of spans typed "Subtle Baseless Info" — and is unevenly distributed by task type,
-the structure of a real, recognized subclass rather than of noise. We quantify what this
-structured conflation costs under RAGTruth's official scoring: because the protocol counts
-every flagged character directly, any prediction set that excludes the low-intensity
-subclass is capped at 90.5% char-overlap span recall against gold, independent of any
-model — a direct consequence of the conflation, not a second, independent result. We also
-tested whether the conflation could be exploited at training time, by down-weighting the
-low-intensity subclass in the loss under a pre-registered decision rule; it produced no
-measurable improvement in clean-span F1 at the one setting tested, a negative result we
-report as one rather than repackage as a further finding. We report this as a
+scattering of annotator disagreement: it concentrates in one span type — 73.64% of spans
+typed "Subtle Baseless Info" are themselves the low-intensity, ungrounded-but-true
+subclass — and is unevenly distributed by task type, the structure of a real, recognized
+subclass rather than of noise. We quantify what this structured conflation costs under
+RAGTruth's official scoring: because the protocol counts every flagged character directly,
+any prediction set that excludes the low-intensity subclass is capped at 90.5% char-overlap
+span recall against gold, independent of any model — a direct consequence of the conflation,
+not a second, independent result. We also tested whether the conflation could be exploited
+at training time, by down-weighting the low-intensity subclass in the loss under a
+pre-registered decision rule; across three lambda values it produced a monotonic,
+dose-dependent decline in clean-span and response F1 rather than an improvement, ruling out
+both "the model is insensitive to this distinction" and "the intervention was too weak to
+register" as explanations — a negative result we report as one rather than repackage as a
+further finding. We report this as a
 benchmark-quality contribution, not a detection method, and show that the metric needed to
 distinguish these subclasses already exists in data the benchmark ships but no published
 evaluation uses.
@@ -37,12 +41,13 @@ evaluation; label-class conflation; annotation metadata
 
 ## 1. Introduction
 
-Every published evaluation on RAGTruth (Niu et al., 2024) treats the benchmark's gold
-annotations as a single, undifferentiated positive class. A span is hallucinated or it is
-not; a response is hallucinated or it is not; the reported F1 aggregates over that binary.
-This is how the benchmark's own reference baseline scores itself, how LettuceDetect
-(Kovács & Recski, 2025) scores itself, and how the comparison tables in this literature are
-assembled.
+Every RAGTruth (Niu et al., 2024) evaluation whose preprocessing we could inspect treats the
+benchmark's gold annotations as a single, undifferentiated positive class. A span is
+hallucinated or it is not; a response is hallucinated or it is not; the reported F1 aggregates
+over that binary. This is how the benchmark's own reference baseline scores itself, how
+LettuceDetect (Kovács & Recski, 2025) scores itself, and how the comparison tables in this
+literature are assembled from figures whose underlying preprocessing is, in most cases,
+unverifiable (§2.4).
 
 That positive class is not homogeneous. RAGTruth annotates under a faithfulness
 objective — it targets claims that are *unsupported or contradictory* with respect to the
@@ -86,8 +91,9 @@ LettuceDetect's `preprocess_ragtruth.py` reads only `start`, `end`, and `label_t
 that RAGTruth's own vendored reference baseline contains no occurrence of the field at all.
 Luna (Belyi et al., 2024/2025) and RAG-HAT (Song et al., 2024) publish neither code nor
 weights; their treatment of the field is unverified and we do not assume it. Second, and
-more importantly, the field does not mark an error. Two independent sources establish that
-it is a **severity qualifier applied within the positive class**, not a retraction of the
+more importantly, the field does not mark an error. Two distinct signals in the released
+data establish that it is a **severity qualifier applied within the positive class**, not a
+retraction of the
 label. The README's own wording separates correctness from groundedness. And RAGTruth's
 per-span `meta` field — a single annotator-written string, whose first line is a severity
 prefix and whose remainder is free text — carries both halves of the same signal: it
@@ -129,12 +135,15 @@ any model is trained: the scoring protocol counts every flagged character direct
 undiluted, so it fixes what any reported RAGTruth recall figure can mean once the
 low-intensity subclass is excluded from what counts as caught. §5 asks whether the same
 conflation can instead be *exploited* at training time, by teaching a model to discount the
-low-severity subclass through loss down-weighting; under a pre-registered decision rule, at
-the setting tested, it could not — a negative result, reported as one, not repackaged as a
-second leg. The two are worth holding side by side for one reason, developed in §7.1 as a
-discussion point rather than asserted here as the thesis: the same quantity that is too
-small to move a training process is large enough to bend a scoring function, so their
-difference is not a contradiction.
+low-severity subclass through loss down-weighting; under a pre-registered decision rule,
+across three lambda values, it never did — a monotonic, dose-dependent decline instead of an
+improvement, ruling out both "the model can't tell" and "the intervention was too weak" as
+explanations. The two are worth holding side by side for one reason, developed in §7.1 as a
+discussion point rather than asserted here as the thesis: the same subclass is large enough,
+counted undiluted, to bend a scoring function, and small enough, diluted across a full
+training objective, that removing it measurably costs rather than helps — a difference in
+the size of the quantity each stage operates over, not a contradiction between the two
+results.
 
 This is a benchmark-quality contribution, not a detection method. No number reported here
 is a new record, and none needs to be. The token-level detector used as the instrument
@@ -242,19 +251,32 @@ claim as novel is narrower than the distinction itself: **the conceptual distinc
 established; the benchmark ships a machine-readable field encoding it; no published
 RAGTruth evaluation conditions on that field.**
 
-The field this paper audits was added to the **data**, not to the paper. RAGTruth's corpus
-README dates it to February 2024; the ACL 2024 paper (Niu et al., arXiv:2401.00396) does
-not mention it anywhere, checked against the full text on 2026-07-25. No source in our
-review reports any RAGTruth metric conditioned on it.
+The field this paper audits was named and discussed in the **paper**, not only added to the
+data. RAGTruth's corpus README dates the field to February 2024; the ACL paper (Niu et al.,
+arXiv:2401.00396, §3.4 "Annotations for Adaptive Evaluation" and its "Implicit Truth"
+subsection) discusses the concept by name and reports per-task, per-model `implicit_true`
+span counts in Table 10 — checked against the full text on 2026-07-25. What the paper does
+not do, and what no source in our review found any system doing, is report a **detection
+metric** — precision, recall, or F1 — conditioned on the field. The distinction this paper
+turns on is discussed-and-counted versus scored-on, not mentioned versus unmentioned, and the
+claim above is scoped to that: no published RAGTruth evaluation conditions its detection
+metric on `implicit_true`.
 
-There is, however, a direct precedent for metadata-conditioned scoring, and the benchmark's
-own authors set it. The RAGTruth paper offers users the option to **include or exclude
-`due_to_null` spans** when evaluating — spans where the model invented a value for a null
-field. The authors thus recognized that one metadata field materially changes what a score
-means, and built the affordance to score with and without it. They built it for one field
-and not for the other. What this paper proposes for `implicit_true` — report the metric
-stratified, so a reader can see which subclass a number is about — is the treatment
-RAGTruth already gives `due_to_null`, applied to the field that did not get it.
+`due_to_null` receives the same treatment in the same paper section, and is worth reading
+alongside it rather than as a separate, stronger precedent than it is. §3.4's general
+framing — annotations of this kind "enable users to adopt various evaluation strategies
+tailored to their specific application circumstances" — covers `implicit_true` and
+`due_to_null` under one heading, not `due_to_null` alone; we found no sentence in the paper,
+its appendices, or the vendored baseline code that implements an include/exclude scoring
+toggle for either field specifically. The `due_to_null` subsection instead states that the
+authors' own subsequent detection prompts "will be aligned with this standard" — i.e.,
+`due_to_null` spans are included as hallucinations in their own experiments, not optionally
+excluded. What this paper proposes for `implicit_true` — report the metric stratified, so a
+reader can see which subclass a number is about — is therefore not a request to extend an
+existing, implemented precedent from one field to the other. It is consistent with the
+stated intent of RAGTruth's own "Adaptive Evaluation" framing for annotations of this kind,
+applied to a field that framing already names but that no published evaluation, including
+the benchmark's own, operationalizes.
 
 What is verified about the field's handling, and what is not:
 
@@ -342,7 +364,7 @@ claims *look* more plausible than others, independent of whether the context con
 Whether that partial, imperfect signal is strong enough for loss down-weighting to extract
 is exactly what the ablation tests. A null result does not mean the model cannot distinguish
 true from false in general; it means this intervention did not surface whatever
-prior-knowledge correlate exists, at the one setting tested.
+prior-knowledge correlate exists, at any of the settings tested.
 
 ACWS could not be tested alone. A code audit had separately found this project's detector
 deviating from LettuceDetect's published recipe on four axes at once — learning rate,
@@ -384,6 +406,18 @@ official gold character mass, recomputed by the harness on every run, so it coul
 been widened after the fact to accommodate a larger recall loss than the rule intended. A
 hardcoded constant would leave a reader no way to tell a pre-registered tolerance from a
 post-hoc one.
+
+This runtime figure is **9.557%**, not the 9.49% quoted in §4 and §6. Both are "flagged
+share of gold character mass" over the same underlying spans, but over two different
+representations of them: §4/§6's 9.49% is computed directly from the released corpus's raw
+span offsets (85,877 characters, §6.1); the harness's 9.557% is computed from each arm's own
+`gold_spans` field in its prediction dump — the character spans as reconstructed through this
+project's tokenization pipeline, which need not exactly reproduce the raw corpus's character
+count. The decision rule uses the runtime figure because it must be self-computed from what
+the harness has on hand at evaluation time, not sourced from a number quoted elsewhere in this
+paper; §4 and §6 use the raw-corpus figure because they are census claims over the released
+data itself. Neither figure is the "wrong" one for its purpose, and the 0.07-point gap between
+them changes no verdict in §5.2.
 
 Before any arm was trusted, the harness had to reproduce the *published* numbers of the
 already-released model (arm a) from its prediction dump. It did — span-F1 **0.5114** against
@@ -459,13 +493,16 @@ unflagged gold spans have close to inverted distributions:
 The predicate is exact, not approximate, and worth stating precisely because a plausible
 variant changes the numbers: a span counts as `LOW` (respectively `HIGH`) iff
 `meta.upper().startswith("LOW")` (`"HIGH"`), with no leading-whitespace stripping. Stripping
-before the check — an equally defensible reading — moves 17 flagged spans whose `meta`
-string opens with a literal newline before the tag, and a comparable share of unflagged
-spans, yielding 91.5% / 47.0% in place of 90.6% / 4.4%. Both variants preserve the
-finding — flagged spans are overwhelmingly `LOW`, unflagged spans are not — but we report
-the unstripped predicate because it is what §5's script and the pipeline's own
-`is_implicit_true_span()` companion code actually run, not because it is the only
-defensible choice.
+before the check — an equally defensible reading — moves 17 of 1,928 flagged spans (0.88%)
+and 70 of 12,361 unflagged spans (0.57%) whose `meta` string opens with a literal newline
+before the tag. None of the unflagged movement is into `LOW`: flagged-`LOW` moves 90.6% →
+**91.5%**; unflagged-`LOW` is unchanged at **4.4%** (545 spans under both predicates);
+unflagged-`HIGH` separately moves 46.4% → 47.0%. The flagged/unflagged `LOW` gap — the
+comparison the finding rests on — is therefore fully robust to predicate choice, and the
+stripped variant states it slightly more cleanly (91.5% against 4.4%) than the unstripped one
+does. We report the unstripped predicate as primary because it is what §5's script and the
+pipeline's own `is_implicit_true_span()` companion code actually run, not because it is the
+only defensible choice.
 
 Nine in ten flagged spans are marked low-intensity by the annotator who labelled them,
 against fewer than one in twenty elsewhere. Read alongside the README's definition and the
@@ -505,6 +542,19 @@ ungrounded-but-true with a minority of ungrounded-and-false cases mixed in. Any 
 over it — and Subtle/Evident is the benchmark's own severity axis, carried in every gold
 span's `label_type` — is a figure over a mixture whose composition is nowhere stated.
 
+Part of this concentration is plausibly built into RAGTruth's own taxonomy rather than
+discovered by us, and that costs the argument little to admit. Content that is true of the
+world but absent from the context is, almost by definition, not a *contradiction* of the
+context — so it is structurally more likely to land in "Baseless Info" than "Conflict" — and
+it is less likely to read as an evident, checkable error than a subtle one. Some of the 73.64%
+and 90.6% figures above may therefore restate the taxonomy's geometry rather than reveal a
+concentration nobody expected. What survives that reading intact, and what this paper's
+contribution rests on, is narrower and does not depend on the concentration being surprising:
+(i) the field exists, is machine-readable, and is discarded by every system whose
+preprocessing we could inspect (§2.4); and (ii) it covers 9.49% of test gold character mass,
+enough to bound official recall (§6). Nobody was arguing the flag was randomly distributed;
+the paper's claim does not need it to be.
+
 **It is also concentrated by task type**, which matters because RAGTruth results are
 routinely reported per task:
 
@@ -536,13 +586,13 @@ one marks a severe one, and only the second has an authors'-provided scoring aff
 
 One split-level difference is worth stating plainly and then leaving alone. The flagged
 subclass is **more concentrated in train (14.49% of positive tokens) than in test
-(8.95%)**. For a paper whose sharper claim (§6) is about evaluation, that cuts against the
-tidy story: the phenomenon is denser exactly where §5's intervention produced no measurable
-effect. We report it as a methodological fact and decline to recruit it as support for
-either §5 or §6, in either direction. Sensitivity to a subclass at training time is not
-required to scale with that subclass's concentration, and we have no measurement that would
-establish it does. §5's null is scoped to the setting tested, and this table does not widen
-it.
+(8.95%)**. We report it as a methodological fact and decline to recruit it as support for
+either §5 or §6, in either direction: §5's training-time cost was measured against train's
+higher concentration, and §6's evaluation-time bound is computed over test's lower one, so
+the two sections are not even describing the same density. Sensitivity to a subclass at
+training time is not required to scale with that subclass's concentration, and we have no
+measurement that would establish it does either way. §5's dose-response result is scoped to
+the settings tested, and this table does not widen it.
 
 ---
 
@@ -580,9 +630,36 @@ was genuine, only the save step failed. Seed 456 is a fresh, full run (RunPod, e
 attention) with a complete metrics file and prediction dump. No arm in this ablation rests
 solely on a decision record any longer.
 
-Arm c differs from arm b in exactly one parameter, `--implicit_true_weight` 1.0 → 0.25.
-Evaluated on the pre-registered rule, using each arm's mean across its three matched seeds
-(42, 123, 456):
+Arm c was **designed** to differ from arm b in exactly one parameter,
+`--implicit_true_weight` 1.0 → 0.25 (§3.2's table). The committed metrics files do not fully
+bear this out, and the discrepancy is disclosed here rather than left for a reader to find:
+
+| Run | epochs | micro-batch × accum (eff. batch) | attention | λ |
+|---|---:|---|---|---:|
+| arm b, seed 42 | 6 | 4×2 (8) | sdpa | 1.0 |
+| base, seed 123 | 4 | 4×2 (8) | sdpa | 1.0 |
+| base, seed 456 | 4 | 4×2 (8) | sdpa | 1.0 |
+| arm c, seed 42 | **unrecorded** | **unrecorded** | **unrecorded** | 0.25 |
+| arm c, seed 123 | **unrecorded** | **unrecorded** | **unrecorded** | 0.25 |
+| arm c, seed 456 | 6 | 1×8 (8) | eager | 0.25 |
+| arm d, seed 42 | 6 | 1×8 (8) | eager | 0.0 |
+
+Effective batch size is uniform (8) across every run that records it. Epochs and attention
+implementation are not: arm c seed 456 ran 6 epochs on `eager` against arm b seed 42's 6 on
+`sdpa`, but against the base seeds it is compared to in the 3-seed mean (123, 456 at 4
+epochs each) it ran 6. Arm c seeds 42 and 123 record no hyperparameters at all beyond the
+seed value — the same configuration-unrecorded signature Appendix A discloses for
+large-backbone seed 123, applied here to the two seeds that, together with seed 456, carry
+this section's headline verdict.
+
+One direction is worth stating plainly. Where recipe details are recorded, arm c seed 456
+had **more** epochs available than its matched base-arm anchors (6 against 4) and still lost
+to arm b on both clauses at that seed (§5.2 below). If recipe drift favored either arm here,
+it favored arm c — and arm c still failed the rule. The rejection is more robust for it, not
+less.
+
+Evaluated on the pre-registered rule, using each arm's mean across its three seeds (42, 123,
+456, paired by seed value though not confirmed recipe-matched on every seed):
 
 | Clause | Arm b (mean, n=3) | Arm c (mean, n=3) | Δ (c − b) | Verdict |
 |---|---:|---:|---:|---|
@@ -634,8 +711,7 @@ list as open and sharpen a second into something more specific than the flat nul
 reported here.
 
 **The λ sweep is now three points, not one.** Read across λ = 1.0 (arm b) → λ = 0.25
-(arm c) → λ = 0.0 (arm d), holding seed 42 fixed for the full three-point comparison (arm d
-has only that seed):
+(arm c) → λ = 0.0 (arm d), at seed 42 (arm d has only that seed):
 
 | λ | Arm | clean-span F1 | response F1 |
 |---|---|---:|---:|
@@ -643,13 +719,30 @@ has only that seed):
 | 0.25 | c (seed 42) | 0.5171 | 0.7623 |
 | 0.0 | d (seed 42) | **0.5113** | **0.7487** |
 
-Both metrics decline monotonically as λ drops — the direction never reverses across the
-three points. The total move from λ = 1.0 to λ = 0.0 is **−0.0194 clean-span F1** and
-**−0.0144 response F1**, respectively about **3.5×** and **12×** arm b's own three-seed
-noise floor (0.0055 clean-span, 0.0012 response — §5.2). That is not the signature of a flat,
-insensitive model. *Source: `results/clean_span_seed_variance_full.json`, arm `d42`, via
-`scripts/ablation_report.py --arm b42=... --arm c42=... --arm
-d42=results/arm_d_lambda0_seed42_preds.json`.*
+**This sweep is not λ-isolated, and that is disclosed here rather than left implicit.** As
+§5.2's configuration table shows, arm c seed 42's hyperparameters beyond the seed value are
+unrecorded, so the sweep's middle point cannot be confirmed to match either endpoint on
+epochs or attention implementation. The two endpoints do differ on both axes: arm b seed 42
+ran 6 epochs on `sdpa`; arm d seed 42 ran 6 epochs on `eager`, with a different micro-batch/
+accumulation split (1×8 against 4×2, same effective batch of 8). We do not believe
+attention-implementation or micro-batch geometry differences of this kind plausibly account
+for a move of 0.019 F1 — these are numerics-level implementation choices, not recipe changes
+expected to shift accuracy at that scale — but that is reasoning about plausibility, not a
+claim verified with a control run holding λ fixed and attention implementation varied, and no
+such run is planned (§8).
+
+With that caveat stated, both metrics decline monotonically as λ drops — the direction never
+reverses across the three points. The total move from λ = 1.0 to λ = 0.0 is **−0.0194
+clean-span F1** and **−0.0144 response F1**. For scale: arm b's own three-seed range is 0.0055
+clean-span F1 and 0.0012 response F1 (§5.2) — though that range is itself not a pure
+seed-noise estimate, since those three runs differ in epoch cap (6/4/4; the same asymmetry
+disclosed in Appendix A for the parallel large-backbone comparison). We report the raw ranges
+and the raw deltas side by side rather than compute a noise-floor multiple from an n = 3
+range, which would overstate what three points can establish about dispersion. The full-range
+decline is several times larger than arm b's own seed-to-seed spread on both metrics; that is
+not the signature of a flat, insensitive model. *Source:
+`results/clean_span_seed_variance_full.json`, arm `d42`, via `scripts/ablation_report.py --arm
+b42=... --arm c42=... --arm d42=results/arm_d_lambda0_seed42_preds.json`.*
 
 **This resolves the confound the earlier draft of this section left open — in neither of the
 two directions it originally offered.** That draft could not distinguish "the model is
@@ -675,14 +768,15 @@ that these positions were safe to discount because they correlated with a subcla
 did not need to learn from — and a monotonic, three-point decline is what a signal-removal
 account predicts and a pure-noise account does not.
 
-**One caveat applies to the shape of the sweep, not to its endpoints.** Arm d is a single
-seed. The λ = 0.25 → 0.0 step alone (clean-span F1 0.5171 → 0.5113, −0.0058) is the same
-order of magnitude as arm b's own three-seed range (0.0055) — on this evidence alone, that
-specific half-step is not individually distinguishable from seed noise. What clears the
-noise floor unambiguously is the full λ = 1.0 → 0.0 range (−0.0194 against arm b's seed-42
-value specifically, −0.0195 against arm b's three-seed mean), which no plausible account of
-arm b's own seed variance comes close to spanning. The claim rests on the full range and its
-monotonic shape across three points, not on the middle segment considered in isolation.
+**Two caveats apply here: one to the sweep's shape, one to its endpoints (disclosed above).**
+Arm d is a single seed. The λ = 0.25 → 0.0 step alone (clean-span F1 0.5171 → 0.5113, −0.0058)
+is the same order of magnitude as arm b's own three-seed range (0.0055) — on this evidence
+alone, that specific half-step is not individually distinguishable from seed noise. What
+exceeds arm b's own range by a wide margin is the full λ = 1.0 → 0.0 move (−0.0194 against
+arm b's seed-42 value specifically, −0.0195 against arm b's three-seed mean). The claim rests
+on the full range and its monotonic shape across three points, not on the middle segment
+considered in isolation — and it is read alongside the attention-implementation/micro-batch
+caveat on the endpoints stated above, not in place of it.
 
 Four constraints remain: one resolved outright, one resolved into a different and more
 specific finding than either of its original candidates, and two unchanged.
@@ -694,7 +788,16 @@ subject to that seed's own draw.
 **Resolved, differently than either original candidate predicted: the
 insensitivity/too-small confound.** As above — neither "the model can't tell" nor "we didn't
 push hard enough" survives the λ = 0 run. The null has a specific, monotonic shape that
-neither original account predicts, and only a signal-removal account does.
+neither original account predicts. A signal-removal account — the model was using the
+flagged tokens' gradient productively, and down-weighting or masking them removes real signal
+— predicts exactly this shape. So does a second account this data cannot rule out:
+**supervision inconsistency**, in which telling the model that surface-identical unsupported
+claims sometimes count toward the loss and sometimes don't (a distinction it cannot observe
+at inference, since RAGTruth's context is exactly what the claim is unsupported by) degrades
+performance in proportion to how strongly that inconsistency is enforced, independent of
+whether the down-weighted tokens carried extractable signal. Both accounts predict a
+monotonic decline; this data does not distinguish between them, and no experiment reported
+here does either.
 
 **Unchanged: the λ grid is still coarse, and one architecture is tested throughout.** Three
 points (0.0, 0.25, 1.0) establish direction and rough magnitude but not the sweep's shape
@@ -858,28 +961,50 @@ report.
 
 ## 7. Discussion
 
-### 7.1 The training-time null and the evaluation-time bound are independent claims
+### 7.1 The training-time cost and the evaluation-time bound are not in tension
 
-A reader could reasonably wonder whether §5's null and §6's bound are in tension: if the
-conflated subclass is large enough to cap recall at 90.5% (§6), why did down-weighting it in
-training move nothing (§5)? They are not in tension, and neither result bears on the
-other's validity — the reason is that the two stages weight the same tokens by entirely
-different quantities.
+A reader could reasonably wonder whether §5's result and §6's bound are in tension: if the
+flagged subclass is large enough to cap recall at 90.5% (§6), and down-weighting it produced
+a real, monotonic cost at training time rather than nothing (§5.3), how can the same
+subclass be both a hard ceiling regardless of any model and a quantity a model is sensitive
+to? They are not in tension, but the resolution is not the one an earlier draft of this
+section offered. It is not that the down-weighted quantity was "too small to steer a
+training process" — §5.3 rules that reading out directly: the model demonstrably is
+steered by it, and removing it costs performance. The actual asymmetry is a mismatch in the
+size of the quantity each stage operates over, and in how much dilution each stage applies
+to it — not a mismatch in whether the quantity matters.
 
-At training time, the flagged subclass enters through the loss. It is roughly 0.7–0.8% of
-supervised tokens, and down-weighting it at λ = 0.25 moves on the order of 0.2% of total
-loss mass — a perturbation that competes with every other gradient signal in the objective
-and is diluted across the whole of training. At evaluation time, the same subclass enters
-through the scoring function, where it is 9.49% of test gold character mass and is diluted
-by nothing at all. Each flagged character is counted once, directly, against any detector
-that declines to flag it.
+At training time, the flagged subclass enters through the loss, competing with every other
+supervised token for the same gradient. It is roughly 0.7–0.8% of supervised tokens,
+contributing that same ~0.8% share of total loss mass at λ = 1.0; down-weighting it to
+λ = 0.25 shifts that contribution to roughly 0.2% of total loss mass, and λ = 0 removes it
+entirely. §5.3 shows that removing even this small, heavily diluted a share is enough to
+cost the model something real: clean-span and response F1 both decline monotonically as λ
+drops, and the decline is largest exactly where the down-weighted share is smallest. The
+quantity is not too small to matter — it demonstrably does, and the model was extracting
+productive gradient signal from it.
 
-A quantity can be too small to steer a training process and large enough to bend a metric,
-and here it demonstrably is both. The stronger reason to treat the two as independent is
-that §6's bound needs no model: it is arithmetic over the released corpus and holds before
-any system is trained, so it cannot be undermined by a training-time null. Symmetrically,
-§5's null is not weakened by §6's bound: a model's inability to exploit a training signal
-says nothing about the scoring protocol's arithmetic.
+At evaluation time, the same subclass enters through the scoring function, and the
+difference is in kind, not only in degree. It is 9.49% of test gold character mass, counted
+directly and fully by RAGTruth's official metric, with no dilution across other tokens or
+other loss terms — over 40 times larger than the ~0.2% loss-mass share the down-weighted
+quantity fell to at λ = 0.25, and more than an order of magnitude larger even than the
+~0.8% share it holds undiminished at λ = 1.0. Every flagged character is counted once,
+directly, against any detector that declines to flag it; nothing else in the scoring
+function competes with it for attention the way every other supervised token competes with
+it for gradient during training.
+
+Put plainly: the same subclass is large enough, and undiluted enough, to cap what official
+scoring can report (§6) — and, separately, small enough in absolute terms, and diluted
+enough across a full training objective, that manipulating its loss weight measurably moves
+clean-span and response F1 in the wrong direction rather than not moving them at all
+(§5.3). Both are now real, measured effects of the same subclass; what differs is the size
+of the quantity each mechanism operates over and whether anything dilutes it on the way in.
+§6's bound needs no model — it is arithmetic over the released corpus and holds before any
+system is trained, so it cannot be undermined by a training-time result in either
+direction. Symmetrically, §5's finding that the model uses this subclass's gradient
+productively says nothing about the scoring protocol's arithmetic, which is fixed by the
+gold labels regardless of what any model learns from them.
 
 ### 7.2 The arm-b complication
 
@@ -932,8 +1057,11 @@ ungrounded-but-true content, and the number is identical either way.
 
 Stratified reporting would resolve this: publish the metric separately over
 ungrounded-and-false and ungrounded-but-true gold, alongside the aggregate. The benchmark
-already ships the field this requires, and its authors already established the pattern for
-the neighbouring field (§2.4). We offer this as an implication of what we measured rather
+already ships the field this requires, and its own "Adaptive Evaluation" framing (§2.4)
+already names annotations of this kind as intended to support exactly this — even though no
+published evaluation, including the benchmark's own, has operationalized that intent for
+either `implicit_true` or `due_to_null`. We offer this as an implication of what we measured
+rather
 than as a recommendation we have standing to make — one audit and one null ablation do not
 establish what a benchmark's reporting conventions should be, and we have not evaluated what
 stratified reporting would cost in practice or whether it would change any published
@@ -981,10 +1109,22 @@ future work and note the gap rather than approximate it.
 - **The λ grid is coarse, and only one architecture is tested.** Three points (λ = 1.0,
   0.25, 0.0), all on ModernBERT-base. The shape of the decline between these anchors is not
   observed, and no intermediate λ was run.
-- **Arm d (λ = 0) is a single seed.** The full-range decline (λ = 1.0 → 0.0) clears arm b's
-  three-seed noise floor with room to spare, but the middle segment alone (λ = 0.25 → 0.0)
-  does not exceed that floor on the single-seed evidence available, and arm d's own
-  seed-to-seed variance is unmeasured. §5.3 states this caveat in full.
+- **The λ-sweep's two endpoints are not λ-isolated.** Arm b (seed 42, `sdpa`, 4×2 micro-batch)
+  and arm d (seed 42, `eager`, 1×8 micro-batch, same effective batch of 8) differ in attention
+  implementation and micro-batch geometry as well as λ; arm c seed 42, the sweep's middle
+  point, has no recorded hyperparameters beyond its seed value and cannot be confirmed to
+  match either endpoint. §5.3 gives the reasoning for why a numerics-level difference of this
+  kind is not expected to explain a move of this magnitude, but that reasoning is not verified
+  with a control run, and none is planned.
+- **Arm b's own three-seed range is not a pure seed-noise estimate.** Seeds 42, 123, and 456
+  ran at 6, 4, and 4 epochs respectively — the same epoch-cap asymmetry disclosed below for
+  the large-backbone comparison. The range used throughout §5.2–§5.3 as a scale reference
+  reflects this asymmetry as well as seed variation, which is why it is reported as a raw
+  range rather than as a multiplier.
+- **Arm d (λ = 0) is a single seed.** The full-range decline (λ = 1.0 → 0.0) exceeds arm b's
+  own three-seed range by a wide margin, but the middle segment alone (λ = 0.25 → 0.0) does
+  not exceed that range on the single-seed evidence available, and arm d's own seed-to-seed
+  variance is unmeasured. §5.3 states this caveat in full.
 - **An unresolved discrepancy between ADR-020's original arm-c seed-42 record and the
   recovered artifact.** ADR-020 originally reported response F1 0.7633 and clean-span F1
   0.5262 for arm c at seed 42; the artifact recovered via Hub inference gives 0.7623 and
@@ -1045,9 +1185,10 @@ side.
 
 RAGTruth's positive class aggregates two materially different error types, and the benchmark
 ships the field that separates them. §4 showed this is not a scattering of annotator
-disagreement: the conflation concentrates in one span type — nearly three quarters of spans
-typed "Subtle Baseless Info" — and is unevenly distributed by task, the structure of a real,
-annotator-recognized subclass. That structured finding is what the rest of the paper builds
+disagreement: the conflation concentrates in one span type — 73.64% of spans typed "Subtle
+Baseless Info" are themselves the low-intensity, ungrounded-but-true subclass — and is
+unevenly distributed by task, the structure of a real, annotator-recognized subclass. That
+structured finding is what the rest of the paper builds
 on.
 
 Its consequence at evaluation time is exact and model-independent: flagged spans are 8,151
@@ -1064,20 +1205,27 @@ before a detector is trained.
 We also tested whether the same conflation could be exploited at training time.
 Down-weighting the ungrounded-but-true subclass in the loss, under a decision rule fixed in
 code before the arms ran, never improved clean-span F1 or response F1 over the unweighted
-baseline — not at λ = 0.25 across three matched seeds, and not at λ = 0.0, the maximal
-version of the intervention, which instead produced a larger, monotonic decline. That
+baseline — not at λ = 0.25 across three seeds (paired by seed value with arm b, though not
+confirmed recipe-matched on every seed; §5.2 discloses the discrepancy), and not at λ = 0.0,
+the maximal version of the intervention, which instead produced a larger, monotonic decline.
+That
 dose-response rules out both candidate readings of an earlier, thinner version of this
 result: the model is not insensitive to the intervention, and the intervention was not too
 small to register. This remains a negative result, narrower than the finding it sits beside,
 and we claim it as such rather than as a second leg — but it is a specific, dose-dependent
 negative result now, not an underpowered one.
 
-The evaluation-time bound and the training-time null are not in tension, for the reason
-§7.1 gives: the same quantity that is too small to steer a training process (0.2% of loss
-mass) is large enough to bend a scoring function (9.49% of test character mass; 8.95% of
-test positive tokens is the related but distinct train/test density figure from §4), so a
-real finding and a real null coexist without contradiction. They are two different
-questions asked of the same structured fact, not one result measured twice.
+The evaluation-time bound and the training-time cost are not in tension, for the reason
+§7.1 gives: the asymmetry is not that the flagged subclass was too small to matter at
+training time — the paragraph above just ruled that reading out — but that it is a small
+quantity, diluted across a full training objective (0.2–0.8% of loss mass depending on λ),
+relative to the far larger quantity the evaluation-time bound is computed over and applies
+no dilution to at all (9.49% of test gold character mass; 8.95% of test positive tokens is
+the related but distinct train/test density figure from §4). A real training-time cost and
+a real evaluation-time bound coexist without contradiction, because they are two different
+questions asked of the same structured fact — how much removing this signal costs a model
+that must compete it against every other gradient, and how much this signal counts toward a
+metric that dilutes nothing — not one result measured twice.
 
 We close with an implication we have not demonstrated and offer as speculation rather than
 as a lesson. `implicit_true` exists because RAGTruth's annotators recorded not only *that* a
@@ -1123,6 +1271,17 @@ the released RAGTruth corpus, reproduced in full as Supplement S1
 (`docs/research/02-implicit-true-audit.md`, §5) rather than paraphrased, so every count in
 this paper can be re-derived from the raw corpus independently of this project's other
 code.
+
+§6.4's Subtle-cohort miss rates resolve to `scripts/subtle_only_miss_rate.py`, run against the
+committed `results/token_preds_arm_b.json` prediction dump; the script emits no metrics file,
+so it is this result's only artifact and is committed alongside this paper for that reason.
+
+One naming hazard in `results/` is worth flagging directly rather than leaving for a reader to
+discover: `results/finetuned_track_b_token_level_metrics.json` is a byte-identical duplicate of
+`results/arm_b_metrics.json`, despite a filename that suggests otherwise
+(`docs/EXPERIMENT_LEDGER.md` E5 records how this arose). Neither this paper nor its source
+documents cite the duplicate; `arm_a_original_metrics.json` and `arm_b_metrics.json` are the
+two files this paper treats as canonical for the arm-a/arm-b comparison in §5.1.
 
 ## References
 
