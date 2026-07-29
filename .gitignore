@@ -6,12 +6,14 @@ data/processed/
 *.safetensors
 *.bin
 
-# Enviroment
+# Environment
 .venv/
 venv/
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
 
 # Secrets
 .env
@@ -19,3 +21,16 @@ __pycache__/
 # System
 .DS_Store
 Thumbs.db
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.toc
+
+# AI tooling session state (not project content)
+.claude/
+.superpowers/
