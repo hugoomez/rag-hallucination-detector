@@ -1,0 +1,54 @@
+{
+  "model_name": "answerdotai/ModernBERT-large",
+  "hyperparameters": {
+    "seed": 123
+  },
+  "test": {
+    "span_char_level": {
+      "precision": 0.6821823046677434,
+      "recall": 0.49027378788767073,
+      "f1": 0.5705221793174965
+    },
+    "response_level_derived": {
+      "accuracy": 0.8603703703703703,
+      "precision": 0.8223234624145785,
+      "recall": 0.7656415694591728,
+      "f1": 0.7929708951125755
+    },
+    "span_exact_match": {
+      "precision": 0.17738359201773837,
+      "recall": 0.21462105969148224,
+      "f1": 0.19423368740515934
+    },
+    "always_hallucinated": {
+      "precision": 0.34925925925925927,
+      "recall": 1.0,
+      "f1": 0.5177051880318418
+    },
+    "random": {
+      "precision": 0.34750733137829914,
+      "recall": 0.5026511134676565,
+      "f1": 0.41092327698309494
+    },
+    "per_task_type": {
+      "Summary": {
+        "n": 900,
+        "precision": 0.6809815950920245,
+        "recall": 0.5441176470588235,
+        "f1": 0.6049046321525886
+      },
+      "QA": {
+        "n": 900,
+        "precision": 0.6875,
+        "recall": 0.6875,
+        "f1": 0.6875
+      },
+      "Data2txt": {
+        "n": 900,
+        "precision": 0.9027027027027027,
+        "recall": 0.8652849740932642,
+        "f1": 0.8835978835978836
+      }
+    }
+  }
+}

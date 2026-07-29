@@ -598,7 +598,8 @@ Confidence-Weighted Supervision), a controlled 3-arm ablation was run on Track B
 instead of response-level F1, no implicit_true weighting); (c) identical to (b)
 plus implicit_true_weight=0.25 (down-weighting training loss on RAGTruth's own
 annotator-flagged "implicit_true" spans, per this project's original finding that
-13.5% of gold hallucination-span character mass is annotator-acknowledged noise).
+13.5% of gold hallucination spans BY COUNT -- 14.56% of gold-span CHARACTER MASS --
+are annotator-acknowledged noise).
 
 **Findings:**
 - Gate 4 (evaluation pipeline reproduction of the published model) passed exactly
@@ -623,8 +624,9 @@ annotator-flagged "implicit_true" spans, per this project's original finding tha
   Hub model. This is a genuine, measured improvement via honest recipe
   correction, independent of the ACWS hypothesis.
 - REJECT ACWS at lambda=0.25 as tested. Document this as a legitimate null
-  result: the hypothesis was well-motivated (13.5% of gold span character mass
-  is annotator-acknowledged noise, unexploited by any published RAGTruth
+  result: the hypothesis was well-motivated (13.5% of gold spans by count /
+  14.56% of gold span character mass is annotator-acknowledged noise,
+  unexploited by any published RAGTruth
   system), pre-registered before testing, and cleanly falsified at this
   setting -- consistent with literature showing pretrained transformers can be
   surprisingly robust to moderate, even structured, label noise.
@@ -652,3 +654,208 @@ identifies as mattering most, arm-b's adoption is a genuine precision/
 recall trade-off, not a strict improvement -- documented here rather than
 only in the aggregate F1 gain, so the decision is auditable on its own
 terms.
+
+**Correction addendum (2026-07-25) -- the ACWS hypothesis rested on a
+misreading of implicit_true.** This ADR describes implicit_true spans as
+"annotator-acknowledged noise" and frames arm c as noise correction. That
+framing is WITHDRAWN. It is not edited out of the text above, because the
+text records what was believed when the experiment was designed and run,
+which is what a pre-registered record is for.
+
+Evidence (docs/research/02-implicit-true-audit.md Sec 2.1):
+
+- RAGTruth's own README defines the field as "this span is correct while
+  the info is not mentioned in the context" -- true in the world, absent
+  from the context.
+- RAGTruth targets "unsupported OR contradictory" claims, i.e. a
+  faithfulness objective. Under it, an ungrounded-but-true span is
+  CORRECTLY labelled a hallucination.
+- 90.6% of implicit_true spans carry a LOW severity prefix in the
+  annotator's meta comment, versus 4.4% of all other gold spans (n=1,928
+  vs 12,361, computed 2026-07-25). The field is a SEVERITY QUALIFIER
+  applied within the positive class, not a retraction of the label.
+
+What changes: the hypothesis's rationale. Arm c did not down-weight noise;
+it down-weighted a real, low-severity error subclass
+(ungrounded-but-true). The correct framing is LABEL-CLASS CONFLATION --
+RAGTruth's positive class aggregates ungrounded-and-false with
+ungrounded-but-true, and ships the field that separates them.
+
+What does NOT change: the arms, the recipe, the pre-registered decision
+rule, Gate 4, arm b's adoption, or arm c's rejection. Every number stands.
+The null is now read as evidence about whether a model can be taught to
+discount a genuine low-severity subclass by simple loss reweighting --
+which it could not, at lambda=0.25 -- rather than as evidence about
+robustness to label noise. The intervention-magnitude confound (flagged
+tokens are ~0.7-0.8% of supervised tokens, ~0.2% of loss mass; lambda=0
+untested) means the null cannot distinguish model insensitivity from an
+intervention below the resolution of training.
+
+Also corrected here: this ADR's claim that the metadata is "unexploited by
+any published RAGTruth system" is narrowed to what was actually verified.
+Code checked 2026-07-25: LettuceDetect's preprocess_ragtruth.py and
+RAGTruth's own vendored baseline (data/raw/ragtruth/baseline/) both
+discard the field. Luna and RAG-HAT publish no code or weights and are
+UNVERIFIED.
+
+---
+
+## ADR-021: 3-seed matched scaling comparison -- ModernBERT-large adopted for reporting
+
+**Context:** Following ADR-020's arm-b adoption, a matched 3-seed (42, 123, 456)
+scaling comparison was run between ModernBERT-base (arm-b's recipe) and
+ModernBERT-large, to test whether the LettuceDetect-large vs -base published
+scaling gap (+3.15 example-F1, +3.49 span-F1) replicates here. Seeds are matched
+across backbones -- same seed means the same weight-init draw and data shuffle,
+so only the backbone differs -- and aggregated by scripts/aggregate_seeds.py.
+
+**Findings:** Large beat base on response-level F1 in 3/3 seeds (mean +0.0311,
+range +0.0292 to +0.0323) and on char-overlap span F1 in 3/3 seeds (mean +0.0408,
+range +0.0379 to +0.0446). The response-F1 delta closely matches LettuceDetect's
+own published base->large gap (+0.0311 vs their +0.0315); our span-F1 delta is
+somewhat LARGER than theirs (+0.0408 vs +0.0349), so "replicates" holds for the
+response-level metric and understates the gain at span level.
+
+Absolute means across seeds: response F1 0.7948 (base 0.7637), span F1 0.5733
+(base 0.5325).
+
+The gain is recall-led, not precision-led -- the same pattern ADR-012 found when
+moving from DeBERTa to ModernBERT. Response recall improves in 3/3 seeds (mean
++0.0516) while response precision improves in only 2/3 (mean +0.0055, one seed at
+-0.0028); char-span precision is likewise 2/3 (mean +0.0217, one seed at -0.0207).
+Only recall is consistently and unambiguously better.
+
+The largest per-task gain is on Summary (+0.0931 mean F1, 3/3 seeds), directly
+addressing the weakest task type identified in Phase 4's error analysis -- and
+notably larger than QA (+0.0375) or the already-strong Data2txt (+0.0146). This
+is worth flagging against ADR-020's addendum: arm-b bought precision by
+under-flagging the hardest cases, and scaling the backbone recovers recall
+exactly where that cost was concentrated.
+
+No significance testing is claimed or possible at n=3. Results are reported
+descriptively -- raw per-seed values, mean, min/max range, and per-seed paired
+deltas -- per scripts/aggregate_seeds.py's deliberate design, which emits no
+p-values by construction.
+
+**Caveat -- this is not a textbook-clean matched sweep:**
+
+- The base arm's epoch cap is not uniform. Seed 42 (= arm b) ran with
+  num_train_epochs=6 and selected epoch 3; seeds 123 and 456 ran with a cap of 4
+  and selected epochs 4 and 3. Seed 123 therefore selected its FINAL epoch and
+  may not have fully converged -- its ceiling under a 6-epoch cap is unknown.
+- The large arm ran at a cap of 4 for seeds 42 and 456, both selecting epoch 2
+  (well clear of the cap, so convergence is not in doubt there).
+- results/large_seed123_metrics.json records only {"seed": 123} under
+  hyperparameters and carries no val block: it was produced by the
+  existing-model inference path (commit d5d9598), not by a fresh training run's
+  reporting, so that run's cap and selected epoch are not recorded anywhere.
+
+The response-F1 spread across base seeds is tiny (range 0.0012; large is 0.0036),
+and the base-vs-large gap (~0.031) is an order of magnitude larger than either
+spread, so these inconsistencies are unlikely to affect the conclusion. But the
+sweep should be described as "seed, with a differing epoch cap on one base arm
+and one unrecorded large config", not as "seed only".
+
+**Decision:** Adopt ModernBERT-large (seed-42 checkpoint) as the best-documented
+model for REPORTING purposes, while keeping ModernBERT-base (arm-b) as the model
+DEPLOYED in the live demo -- a latency/simplicity trade-off consistent with
+ADR-017's decision not to deploy the better-scoring ensemble. The two roles are
+recorded separately and deliberately: the headline number and the running system
+are not required to be the same artifact, as long as which is which is stated.
+
+**Status:** Complete as an experiment and as a decision. Two follow-ups are open
+and deliberately NOT claimed as done:
+
+- The seed-42 large checkpoint is **not published to the Hub**. No
+  hugoomezz/*-large repository exists; the model card, README comparison table,
+  and Hub push all remain to be done before the reporting claim above is
+  externally verifiable.
+- Per-row predictions were dumped for large seeds 42 and 456 but **not for seed
+  123**, so the stratified analyses (scripts/ablation_report.py) can be re-run
+  on only two of the three large seeds.
+
+See docs/EXPERIMENT_LEDGER.md rows E10-E12 for the artifact paths behind every
+number above.
+
+**Correction addendum (2026-07-25) -- reporting role narrowed for the
+write-up.** Nothing in this ADR's experiment or numbers changes. Two
+scoping corrections, made while planning the technical report:
+
+- ADR-020's implicit_true framing was withdrawn (see its correction
+  addendum). This ADR does not depend on that framing, but the sentence
+  linking arm-b's Subtle cost to "annotation noise" should be read under
+  the corrected label-class-conflation reading.
+- For the write-up, E10 (the 3-seed BASE run) and E11/E12 (the base->large
+  comparison) are separated. E10 is load-bearing in the main body: its
+  response-F1 spread (0.0012) and span-F1 spread (0.0006) are the
+  seed-noise floor against which ADR-020's arm-b-to-arm-c delta (-0.0045
+  clean-span F1) is judged non-trivial. E11/E12 go to a clearly labelled
+  appendix as a resource-constrained replication of LettuceDetect's
+  published scaling gap, explicitly outside the paper's argument, with no
+  language implying it validates the detector as a method or supports the
+  annotation findings.
+
+The base-vs-large adoption decision above stands unchanged for repository
+and deployment purposes.
+
+---
+
+## ADR-022: Subtle-only miss rate is understated, not inflated, by annotation noise
+
+**Context:** Following the implicit_true audit (docs/research/02) and Q2's
+adversarial question about whether Track B's reported 48.1% Subtle-only
+miss rate is partly explained by disagreement with noisy (implicit_true)
+labels, a reconciliation analysis (scripts/subtle_only_miss_rate.py) split
+the n=77 Subtle-only test cohort into all-implicit_true (n=47) vs.
+genuinely-Subtle (n=30) subsets.
+
+**Finding:** The result runs opposite to the naive hypothesis. Excluding
+implicit_true responses INCREASES the miss rate (48.1% -> 53.3%). Arm-b
+detects implicit_true-flagged cases more reliably (26/47, 55%) than
+genuinely-unambiguous Subtle cases (14/30, 47%). The reported 48.1%
+headline figure UNDERSTATES rather than overstates real difficulty with
+authentic Subtle hallucinations.
+
+**Caveat:** n=30 denominator gives wide uncertainty (~+/-18pp at 95% CI) --
+report as approximate, not precise.
+
+**Status:** Complete. Directly informs the paper's Subtle-weakness
+narrative (see docs/research/02 and Q2/Q3 planning notes). Full method,
+result table, and reading for the paper: see
+docs/research/04-subtle-only-reconciliation.md.
+
+**Correction addendum (2026-07-25) -- terminology, and the statistical
+register of each claim.**
+
+Terminology: this ADR's title and body call implicit_true "annotation
+noise" and describe the model as "disagreeing with noisy labels". That
+framing is WITHDRAWN per ADR-020's correction addendum -- implicit_true is
+a severity qualifier marking correctly-labelled ungrounded-but-true
+content (90.6% LOW severity vs 4.4% for other gold spans). Read
+"annotation noise" throughout this ADR as "the ungrounded-but-true
+subclass". The finding and every count are unaffected.
+
+Statistical register -- this matters more than the wording. The two claims
+in this ADR live in different registers and must not be reported the same
+way:
+
+- EXACT / CENSUS: "excluding all-implicit_true responses raises the
+  Subtle-only miss rate from 48.1% (37/77) to 53.3% (16/30)". The RAGTruth
+  test set is the object of study, not a sample drawn from a population,
+  so this is an arithmetic fact about a closed, fully-enumerated cohort.
+  It takes NO confidence interval. The "+/-18pp at 95% CI" caveat above
+  is WITHDRAWN as a misapplication of inferential statistics to a census
+  -- it implies an estimate where none is being made, and would let a
+  reviewer dismiss an exact result as noise.
+- INFERENTIAL / NOT ESTABLISHED: "arm-b detects flagged cases more
+  reliably (26/47, 55%) than genuinely-unambiguous ones (14/30, 47%)".
+  This IS a generalization beyond the test set. Fisher's exact test,
+  two-sided, on 26/47 vs 14/30 gives p = 0.491 (OR 1.42) -- computed
+  2026-07-25. The 8.7pp gap is not distinguishable from chance. Report it
+  as a candidate mechanism motivating future work, never as a
+  demonstrated effect.
+
+The census claim is the finding. The mechanism is the explanation, and it
+is unproven. Keeping them in separate registers is what prevents the
+mechanism's weak evidence from dragging down the census fact's exact
+status.
